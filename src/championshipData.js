@@ -203,7 +203,15 @@ export const CHAMPIONSHIPS = {
   mitf: scraped.mitf || {},
   witf: scraped.witf || {},
   motf: scraped.motf || {},
-  wotf: scraped.wotf || {},
+  wotf: {
+    ...(scraped.wotf || {}),
+    // 2026: Wikipedia's year-by-year champions table lags, but the same
+    // page's infobox ("Most recent champion: Georgia (2nd)") and its
+    // championships-by-team table ("Georgia — 2025, 2026") both confirm
+    // the winner. Memory override until the table catches up; a future
+    // scrape will supersede it (scraped values win on overlap).
+    2026: 'Georgia',
+  },
 };
 
 // Compute the full year range from data

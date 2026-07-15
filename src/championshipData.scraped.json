@@ -186,7 +186,8 @@
     "2022": "Ole Miss",
     "2023": "LSU",
     "2024": "Tennessee",
-    "2025": "LSU"
+    "2025": "LSU",
+    "2026": "Oklahoma"
   },
   "softball": {
     "1990": "UCLA",
@@ -223,7 +224,8 @@
     "2022": "Oklahoma",
     "2023": "Oklahoma",
     "2024": "Oklahoma",
-    "2025": "Texas"
+    "2025": "Texas",
+    "2026": "Texas"
   },
   "wvb": {
     "1990": "UCLA",
@@ -298,7 +300,8 @@
     "2022": "Denver",
     "2023": "Quinnipiac",
     "2024": "Denver",
-    "2025": "Western Michigan"
+    "2025": "Western Michigan",
+    "2026": "Denver"
   },
   "msoc": {
     "1990": "UCLA",
@@ -411,7 +414,8 @@
     "2022": "Maryland",
     "2023": "Notre Dame",
     "2024": "Notre Dame",
-    "2025": "Cornell"
+    "2025": "Cornell",
+    "2026": "Princeton"
   },
   "wlax": {
     "1990": "Harvard",
@@ -448,7 +452,8 @@
     "2022": "North Carolina",
     "2023": "Northwestern",
     "2024": "Boston College",
-    "2025": "North Carolina"
+    "2025": "North Carolina",
+    "2026": "Northwestern"
   },
   "wfh": {
     "1990": "Old Dominion",
@@ -550,7 +555,8 @@
     "2022": "Oklahoma",
     "2023": "Oklahoma",
     "2024": "LSU",
-    "2025": "Oklahoma"
+    "2025": "Oklahoma",
+    "2026": "Oklahoma"
   },
   "mten": {
     "1990": "Stanford",
@@ -587,7 +593,8 @@
     "2022": "Virginia",
     "2023": "Virginia",
     "2024": "TCU",
-    "2025": "Wake Forest"
+    "2025": "Wake Forest",
+    "2026": "Virginia"
   },
   "wten": {
     "1990": "Stanford",
@@ -624,7 +631,8 @@
     "2022": "Texas",
     "2023": "North Carolina",
     "2024": "Texas A&M",
-    "2025": "Georgia"
+    "2025": "Georgia",
+    "2026": "Texas A&M"
   },
   "mgolf": {
     "1990": "Arizona State",
@@ -661,7 +669,8 @@
     "2022": "Texas",
     "2023": "Florida",
     "2024": "Auburn",
-    "2025": "Oklahoma State"
+    "2025": "Oklahoma State",
+    "2026": "Auburn"
   },
   "wgolf": {
     "1990": "Arizona State",
@@ -698,7 +707,8 @@
     "2022": "Stanford",
     "2023": "Wake Forest",
     "2024": "Stanford",
-    "2025": "Northwestern"
+    "2025": "Northwestern",
+    "2026": "Stanford"
   },
   "mswim": {
     "1990": "Texas",
@@ -887,7 +897,8 @@
     "2022": "Hawai'i",
     "2023": "UCLA",
     "2024": "UCLA",
-    "2025": "Long Beach State"
+    "2025": "Long Beach State",
+    "2026": "Hawai'i"
   },
   "mwp": {
     "1990": "California",
@@ -951,7 +962,8 @@
     "2022": "Stanford",
     "2023": "Stanford",
     "2024": "UCLA",
-    "2025": "Stanford"
+    "2025": "Stanford",
+    "2026": "USC"
   },
   "mitf": {
     "1990": "Arkansas",
@@ -1064,10 +1076,8 @@
     "2022": "Florida",
     "2023": "Florida",
     "2024": "Florida",
-    "2025": [
-      "USC",
-      "Texas A&M"
-    ]
+    "2025": ["USC", "Texas A&M"],
+    "2026": "Arkansas"
   },
   "wotf": {
     "1990": "LSU",

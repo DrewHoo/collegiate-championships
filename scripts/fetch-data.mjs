@@ -87,8 +87,9 @@ const SOURCES = [
   {
     sport: 'mbb',
     name: "Men's Basketball",
+    // Wikipedia renamed the column "Winning team" -> "Champion" (July 2026).
     url: 'https://en.wikipedia.org/wiki/List_of_NCAA_Division_I_men%27s_basketball_champions',
-    ...wiki({ yearCol: 'Year', winnerCol: 'Winning team' }),
+    ...wiki({ yearCol: 'Year', winnerCol: 'Champion' }),
   },
   {
     sport: 'wbb',
