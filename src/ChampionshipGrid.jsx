@@ -1,5 +1,21 @@
 import { useState, useMemo, useCallback, useRef, useEffect, Fragment, memo } from 'react';
-import { SPORTS, SCHOOLS, CHAMPIONSHIPS, YEARS, getLogoUrl } from './championshipData';
+import {
+  SPORTS,
+  SCHOOLS,
+  CHAMPIONSHIPS,
+  YEARS,
+  getLogoUrl,
+  getMonoLogoUrl,
+} from './championshipData';
+
+// Sport header icons (Fluent Emoji High Contrast, MIT — see src/icons/).
+// Applied as CSS masks so they wear the theme's ink color.
+const SPORT_ICONS = import.meta.glob('./icons/*.svg', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
+const sportIconUrl = (name) => SPORT_ICONS[`./icons/${name}.svg`];
 
 // Default cell size (overridden on mobile via a CSS min() + viewport calc).
 const CELL = 32;
@@ -11,10 +27,15 @@ const HDR_H = 56;
 const activeClass = (school) => 'active-' + school.replace(/\W+/g, '');
 
 // Build a static stylesheet with one rule per school that has titles. The
-// grid toggles `has-active` + per-school `active-<Name>` classes on hover,
-// so the expensive style invalidation that used to happen every hover
-// (swapping the <style> tag contents) is replaced with a cheap className
-// change against pre-parsed rules.
+// layout wrapper toggles `has-active` + per-school `active-<Name>` classes
+// on hover, so the expensive style invalidation that used to happen every
+// hover (swapping the <style> tag contents) is replaced with a cheap
+// className change against pre-parsed rules.
+//
+// The board is monochrome by default (baked white stamps); an active
+// school's marks crossfade to the full-color logo (--sel: 1) while everyone
+// else's cells recede via opacity. Color itself is the highlight — no
+// rings, no glow, no cell background.
 const SCHOOL_HIGHLIGHT_CSS = (() => {
   const present = new Set();
   for (const sport of SPORTS) {
@@ -26,16 +47,74 @@ const SCHOOL_HIGHLIGHT_CSS = (() => {
     }
   }
   const esc = (s) => s.replace(/["\\]/g, '\\$&');
-  let css = '.cg-grid.has-active .cg-cell { opacity: 0.12; }\n';
+  let css = '.cg-active-scope.has-active .cg-cell { opacity: 0.22; }\n';
   for (const s of present) {
-    const color = SCHOOLS[s]?.color || '#fff';
     const e = esc(s);
     const c = activeClass(s);
-    css += `.cg-grid.${c} .cg-cell[data-school="${e}"],.cg-grid.${c} .cg-cell[data-school-2="${e}"]{z-index:5;border-radius:4px;background:rgba(255,255,255,0.08);opacity:1;}\n`;
-    css += `.cg-grid.${c} .cg-cell[data-school="${e}"]::after,.cg-grid.${c} .cg-cell[data-school-2="${e}"]::after{box-shadow:inset 0 0 0 2px ${color},0 0 10px 1px ${color};border-radius:4px;opacity:1;}\n`;
+    css += `.cg-active-scope.${c} .cg-cell[data-school="${e}"],.cg-active-scope.${c} .cg-cell[data-school-2="${e}"]{opacity:1;}\n`;
+    // --sel crossfades the white stamp out and the color logo in (inherited
+    // by both <img>s of the mark). Shared cells carry both schools, so only
+    // the active school's half flips.
+    css += `.cg-active-scope.${c} .cg-cell[data-school="${e}"]:not(.cg-cell--shared),.cg-active-scope.${c} .cg-cell--shared[data-school="${e}"] .cg-half--a,.cg-active-scope.${c} .cg-cell--shared[data-school-2="${e}"] .cg-half--b,.cg-active-scope.${c} .cg-lb-row[data-school="${e}"]{--sel:1;}\n`;
+    css += `.cg-active-scope.${c} .cg-lb-row[data-school="${e}"]{color:var(--bright);}\n`;
+    css += `.cg-active-scope.${c} .cg-lb-row[data-school="${e}"] .cg-lb-count{color:var(--accent);}\n`;
   }
   return css;
 })();
+
+// A school's mark: the baked white stamp, with the full-color logo stacked
+// on top at opacity 0. The per-school --sel rule crossfades between them.
+// The hidden text fallback flips on only if the stamp 404s.
+function SchoolMark({ school, onError }) {
+  const info = SCHOOLS[school];
+  const mono = getMonoLogoUrl(school);
+  const color = getLogoUrl(school);
+  const invert = info?.invertLogo ? ' cg-logo--invert' : '';
+  const fallback = (visible) => (
+    <div
+      className="cg-fallback"
+      style={{
+        display: visible ? 'flex' : 'none',
+        background: info?.color || '#555',
+      }}
+    >
+      {info?.abbr || school.slice(0, 3).toUpperCase()}
+    </div>
+  );
+  if (!mono && !color) return fallback(true);
+  return (
+    <>
+      <span className="cg-mark">
+        {mono ? (
+          <img
+            src={mono}
+            alt={school}
+            loading="lazy"
+            className="cg-logo cg-logo--mono"
+            onError={onError}
+          />
+        ) : (
+          <img
+            src={color}
+            alt={school}
+            loading="lazy"
+            className={'cg-logo cg-logo--auto' + invert}
+            onError={onError}
+          />
+        )}
+        {mono && color && (
+          <img
+            src={color}
+            alt=""
+            loading="lazy"
+            className={'cg-logo cg-logo--color' + invert}
+          />
+        )}
+      </span>
+      {fallback(false)}
+    </>
+  );
+}
 
 // Read ?s=... (repeatable) on first render so shared links land on the
 // right selection. Legacy ?a=/?b=/?school= are still honored for older links.
@@ -63,7 +142,7 @@ export default function ChampionshipGrid() {
   const [highlighted, setHighlighted] = useState(null);
   const [selection, setSelection] = useState(initialSelectionFromUrl);
   const [copied, setCopied] = useState(false);
-  const gridRef = useRef(null);
+  const scopeRef = useRef(null);
 
   // Keep ?s= in sync with the selection and drop legacy params.
   useEffect(() => {
@@ -162,9 +241,11 @@ export default function ChampionshipGrid() {
   }, []);
 
   const handleImgError = useCallback((e) => {
-    // Hide broken images so the text fallback shows
-    e.target.style.display = 'none';
-    const fallback = e.target.nextElementSibling;
+    // Hide the whole mark (stamp + color logo) so the text fallback shows
+    const mark = e.target.closest('.cg-mark');
+    if (!mark) return;
+    mark.style.display = 'none';
+    const fallback = mark.nextElementSibling;
     if (fallback) fallback.style.display = 'flex';
   }, []);
 
@@ -205,18 +286,29 @@ export default function ChampionshipGrid() {
     );
   }, [shareTitle]);
 
-  // Apply highlighting classes directly to the grid DOM node so hover state
-  // never re-renders the memoized GridContent. The CSS rules themselves are
-  // static, so className changes don't cause a CSS reparse.
+  // Apply highlighting classes directly to the wrapper around the grid and
+  // sidebar so hover state never re-renders the memoized GridContent or
+  // Leaderboard. The CSS rules themselves are static, so className changes
+  // don't cause a CSS reparse.
   useEffect(() => {
-    const el = gridRef.current;
+    const el = scopeRef.current;
     if (!el) return;
-    const base = 'cg-grid';
+    const base = 'cg-layout cg-active-scope';
     el.className =
       activeSchools.length === 0
         ? base
         : `${base} has-active ${activeSchools.map(activeClass).join(' ')}`;
   }, [activeSchools]);
+
+  // Leaderboard rows: every school with at least one title, most titles
+  // first, ties alphabetical.
+  const leaderboard = useMemo(
+    () =>
+      Object.entries(schoolTitles)
+        .map(([school, t]) => ({ school, total: t.total }))
+        .sort((a, b) => b.total - a.total || a.school.localeCompare(b.school)),
+    [schoolTitles],
+  );
 
   return (
     <div className="cg-page" onClick={clearSelection}>
@@ -228,7 +320,6 @@ export default function ChampionshipGrid() {
         <h1>NCAA Division I Championships</h1>
         <p className="cg-sub">
           {yearRange} &middot; {SPORTS.length} sports
-          &middot; Hover, tap, or pick schools to compare
         </p>
       </header>
 
@@ -253,10 +344,6 @@ export default function ChampionshipGrid() {
                 <Fragment key={s}>
                   {i > 0 && <span className="cg-info-vs">vs</span>}
                   <div className="cg-info-school">
-                    <div
-                      className="cg-info-swatch"
-                      style={{ background: info?.color || '#888' }}
-                    />
                     {logo && (
                       <img
                         src={logo}
@@ -290,7 +377,7 @@ export default function ChampionshipGrid() {
           </div>
         ) : (
           <div className="cg-info-placeholder">
-            Hover or tap any cell to highlight a school&rsquo;s championships
+            Pick schools to compare
           </div>
         )}
       </div>
@@ -309,18 +396,26 @@ export default function ChampionshipGrid() {
         </button>
       </div>
 
-      {/* Grid — memoized so hover state changes never re-render cells. The
-          active-school className is applied imperatively via gridRef above,
-          driving pre-parsed rules in SCHOOL_HIGHLIGHT_CSS. */}
-      <GridContent
-        gridRef={gridRef}
-        sortedSports={sortedSports}
-        descendingYears={descendingYears}
-        onEnter={onEnter}
-        onLeave={onLeave}
-        onClick={onClick}
-        handleImgError={handleImgError}
-      />
+      {/* Grid + leaderboard — both memoized so hover state changes never
+          re-render them. The active-school className is applied imperatively
+          via scopeRef above, driving pre-parsed rules in
+          SCHOOL_HIGHLIGHT_CSS. */}
+      <div ref={scopeRef} className="cg-layout cg-active-scope">
+        <GridContent
+          sortedSports={sortedSports}
+          descendingYears={descendingYears}
+          onEnter={onEnter}
+          onLeave={onLeave}
+          onClick={onClick}
+          handleImgError={handleImgError}
+        />
+        <Leaderboard
+          rows={leaderboard}
+          onEnter={onEnter}
+          onLeave={onLeave}
+          onToggle={toggleSchool}
+        />
+      </div>
 
       <footer className="cg-footer">
         <p>
@@ -337,7 +432,6 @@ export default function ChampionshipGrid() {
 // handlers that read `selection` via a ref), so React.memo's default shallow
 // comparison skips reconciliation on every hover-state change in the parent.
 const GridContent = memo(function GridContent({
-  gridRef,
   sortedSports,
   descendingYears,
   onEnter,
@@ -348,7 +442,6 @@ const GridContent = memo(function GridContent({
   return (
     <div className="cg-scroll">
       <div
-        ref={gridRef}
         className="cg-grid"
         onMouseLeave={onLeave}
         style={{
@@ -368,9 +461,16 @@ const GridContent = memo(function GridContent({
             data-name={sport.name}
             aria-label={sport.name}
           >
-            <span className="cg-sport-icon" aria-hidden="true">
-              {sport.icon}
-            </span>
+            <span
+              className="cg-sport-icon"
+              aria-hidden="true"
+              style={{ '--icon': `url(${sportIconUrl(sport.icon)})` }}
+            />
+            {sport.tag && (
+              <span className="cg-sport-tag" aria-hidden="true">
+                {sport.tag}
+              </span>
+            )}
             {sport.gender && (
               <span className="cg-sport-gender" aria-hidden="true">
                 {sport.gender}
@@ -418,71 +518,22 @@ const GridContent = memo(function GridContent({
                     title={titleText}
                   >
                     {isShared
-                      ? champs.map((co, i) => {
-                          const coInfo = SCHOOLS[co];
-                          const coLogo = getLogoUrl(co);
-                          const logoCls =
-                            'cg-logo' +
-                            (coInfo?.invertLogo ? ' cg-logo--invert' : '');
-                          return (
-                            <div
-                              key={co}
-                              className={`cg-half cg-half--${i === 0 ? 'a' : 'b'}`}
-                              onMouseEnter={() => onEnter(co)}
-                              onClick={(e) => onClick(co, e)}
-                            >
-                              {coLogo ? (
-                                <img
-                                  src={coLogo}
-                                  alt={co}
-                                  loading="lazy"
-                                  className={logoCls}
-                                  onError={handleImgError}
-                                />
-                              ) : (
-                                <div
-                                  className="cg-fallback"
-                                  style={{
-                                    display: 'flex',
-                                    background: coInfo?.color || '#555',
-                                  }}
-                                >
-                                  {coInfo?.abbr || co.slice(0, 3).toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      : primary && (() => {
-                          const info = SCHOOLS[primary];
-                          const logoUrl = getLogoUrl(primary);
-                          const logoCls =
-                            'cg-logo' +
-                            (info?.invertLogo ? ' cg-logo--invert' : '');
-                          return (
-                            <>
-                              {logoUrl && (
-                                <img
-                                  src={logoUrl}
-                                  alt={primary}
-                                  loading="lazy"
-                                  className={logoCls}
-                                  onError={handleImgError}
-                                />
-                              )}
-                              <div
-                                className="cg-fallback"
-                                style={{
-                                  display: logoUrl ? 'none' : 'flex',
-                                  background: info?.color || '#555',
-                                }}
-                              >
-                                {info?.abbr ||
-                                  primary.slice(0, 3).toUpperCase()}
-                              </div>
-                            </>
-                          );
-                        })()}
+                      ? champs.map((co, i) => (
+                          <div
+                            key={co}
+                            className={`cg-half cg-half--${i === 0 ? 'a' : 'b'}`}
+                            onMouseEnter={() => onEnter(co)}
+                            onClick={(e) => onClick(co, e)}
+                          >
+                            <SchoolMark school={co} onError={handleImgError} />
+                          </div>
+                        ))
+                      : primary && (
+                          <SchoolMark
+                            school={primary}
+                            onError={handleImgError}
+                          />
+                        )}
                     {champs.length === 0 &&
                       year === 2020 &&
                       CHAMPIONSHIPS[sport.key]?.[2019] &&
@@ -499,6 +550,35 @@ const GridContent = memo(function GridContent({
         })}
       </div>
     </div>
+  );
+});
+
+// Ranked list of schools by total titles. Rows share the grid's hover/select
+// mechanics: hovering previews the school in color on the board, clicking
+// toggles it into the selection. Visual active state comes entirely from
+// SCHOOL_HIGHLIGHT_CSS via data-school, so the memo never breaks on hover.
+const Leaderboard = memo(function Leaderboard({ rows, onEnter, onLeave, onToggle }) {
+  return (
+    <aside className="cg-lb" onClick={(e) => e.stopPropagation()}>
+      <div className="cg-lb-title">Most titles</div>
+      <div className="cg-lb-list">
+        {rows.map(({ school, total }) => (
+          <button
+            type="button"
+            key={school}
+            className="cg-lb-row"
+            data-school={school}
+            onMouseEnter={() => onEnter(school)}
+            onMouseLeave={onLeave}
+            onClick={() => onToggle(school)}
+          >
+            <SchoolMark school={school} />
+            <span className="cg-lb-name">{school}</span>
+            <span className="cg-lb-count">{total}</span>
+          </button>
+        ))}
+      </div>
+    </aside>
   );
 });
 
@@ -640,7 +720,8 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
         <div ref={listRef} className="cg-picker-menu" role="listbox">
           {filtered.slice(0, 80).map((school, i) => {
             const info = SCHOOLS[school];
-            const logo = getLogoUrl(school);
+            const logo = getMonoLogoUrl(school) || getLogoUrl(school);
+            const isAuto = !getMonoLogoUrl(school);
             const isActive = i === activeIdx;
             return (
               <div
@@ -663,6 +744,7 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
                     alt=""
                     className={
                       'cg-picker-opt-logo' +
+                      (isAuto ? ' cg-picker-opt-logo--auto' : '') +
                       (info?.invertLogo ? ' cg-logo--invert' : '')
                     }
                   />
@@ -688,24 +770,33 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
 }
 
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Cinder track before sunrise: warm charcoal-rose surfaces, one muted
+   salmon accent, athletic-program type (Oswald display, Barlow text,
+   Barlow Condensed numerals). */
 :root {
-  --bg:      #0c0f14;
-  --surface: #151921;
-  --border:  rgba(255,255,255,0.06);
-  --text:    #e0e0e0;
-  --muted:   #6b7280;
-  --accent:  #fbbf24;
+  --bg:      #2e2a2c;
+  --surface: #363134;
+  --border:  rgba(255,255,255,0.08);
+  --text:    #e3dedd;
+  --muted:   #a29699;
+  --bright:  #eae4e2;
+  --accent:  #e2977e;
+  /* Logo treatment. Marks render as baked white stamps by default and
+     crossfade to the color logo when their school is active (--sel: 1,
+     set per school in SCHOOL_HIGHLIGHT_CSS). --fx-base carries per-logo
+     fixes (the invert for dark-only logos) so it survives the swap. */
+  --fx-base: brightness(1);
 }
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Barlow', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -736,14 +827,16 @@ body {
   transition: color 0.15s, border-color 0.15s;
 }
 .cg-nav:hover {
-  color: #fff;
+  color: var(--bright);
   border-color: rgba(255,255,255,0.25);
 }
 .cg-header h1 {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--bright);
   margin-top: 6px;
 }
 .cg-sub {
@@ -778,8 +871,9 @@ body {
   border-color: rgba(255,255,255,0.22);
 }
 .cg-picker-label {
+  font-family: 'Oswald', sans-serif;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -795,7 +889,7 @@ body {
   border-radius: 14px;
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: var(--bright);
   max-width: 220px;
 }
 .cg-pill-logo {
@@ -803,6 +897,7 @@ body {
   height: 18px;
   object-fit: contain;
   flex-shrink: 0;
+  filter: var(--fx-base);
 }
 .cg-pill-logo--text {
   display: inline-flex;
@@ -828,7 +923,7 @@ body {
   border-radius: 3px;
 }
 .cg-pill-x:hover {
-  color: #fff;
+  color: var(--bright);
   background: rgba(255,255,255,0.08);
 }
 .cg-picker-input {
@@ -850,7 +945,7 @@ body {
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: #1a1f28;
+  background: #403a3c;
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.55);
@@ -876,6 +971,7 @@ body {
   height: 22px;
   object-fit: contain;
   flex-shrink: 0;
+  filter: var(--fx-base) var(--fx-mono);
 }
 .cg-picker-opt-logo--text {
   display: flex;
@@ -888,10 +984,11 @@ body {
 }
 .cg-picker-opt-name {
   flex: 1;
-  color: #fff;
+  color: var(--text);
 }
 .cg-picker-opt-count {
-  font-family: 'DM Mono', monospace;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
   font-size: 11px;
   color: var(--muted);
 }
@@ -943,26 +1040,22 @@ body {
   color: var(--muted);
   flex-shrink: 0;
 }
-.cg-info-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
 .cg-info-logo {
   width: 26px;
   height: 26px;
   object-fit: contain;
+  filter: var(--fx-base);
 }
 .cg-info-name {
   font-weight: 600;
   font-size: 14px;
-  color: #fff;
+  color: var(--bright);
 }
 .cg-info-count {
   font-size: 12px;
   color: var(--muted);
-  font-family: 'DM Mono', monospace;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
 }
 .cg-info-breakdown {
   display: inline-flex;
@@ -971,7 +1064,8 @@ body {
   padding-left: 6px;
   margin-left: 2px;
   border-left: 1px solid rgba(255,255,255,0.12);
-  font-family: 'DM Mono', monospace;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
   font-size: 11px;
   color: var(--muted);
 }
@@ -1016,15 +1110,94 @@ body {
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .cg-share-btn:hover {
-  color: #fff;
+  color: var(--bright);
   border-color: rgba(255,255,255,0.25);
   background: rgba(255,255,255,0.04);
+}
+
+/* Grid + leaderboard layout */
+.cg-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 100%;
+}
+
+/* Leaderboard sidebar */
+.cg-lb {
+  width: 216px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cg-lb-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 12px 6px;
+}
+.cg-lb-list {
+  overflow-y: auto;
+  padding: 0 4px 4px;
+  scrollbar-width: thin;
+}
+.cg-lb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 8px;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.cg-lb-row:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--bright);
+}
+.cg-lb-row .cg-mark,
+.cg-lb-row .cg-fallback {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.cg-lb-row .cg-fallback {
+  border-radius: 3px;
+  font-size: 7px;
+}
+.cg-lb-name {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cg-lb-count {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
 }
 
 /* Scrollable grid wrapper */
 .cg-scroll {
   overflow: auto;
   max-width: 100%;
+  min-width: 0;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -1078,10 +1251,27 @@ body {
   padding: 2px 0;
   cursor: help;
 }
+/* Masked SVG icon so it wears the theme ink; brightens on header hover.
+   Figure glyphs (wrestling, water polo) go mushy below 16px, so the cap
+   stays at 18px and only mobile shrinks them. */
 .cg-sport-icon {
-  font-size: clamp(10px, calc(var(--cell-w) * 0.62), 18px);
+  width: clamp(11px, calc(var(--cell-w) * 0.62), 18px);
+  height: clamp(11px, calc(var(--cell-w) * 0.62), 18px);
+  background: var(--muted);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+  transition: background 0.12s ease;
+}
+.cg-sport-hdr:hover .cg-sport-icon {
+  background: var(--bright);
+}
+.cg-sport-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(6px, calc(var(--cell-w) * 0.3), 9px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   line-height: 1;
-  filter: saturate(0.85);
+  color: var(--muted);
 }
 .cg-sport-gender {
   font-size: clamp(6px, calc(var(--cell-w) * 0.32), 10px);
@@ -1098,8 +1288,8 @@ body {
   top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1f2533;
-  color: #fff;
+  background: #453e40;
+  color: var(--bright);
   border: 1px solid rgba(255,255,255,0.12);
   padding: 4px 9px;
   border-radius: 6px;
@@ -1134,7 +1324,8 @@ body {
   align-items: center;
   justify-content: flex-end;
   padding-right: 10px;
-  font-family: 'DM Mono', monospace;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
   font-size: 12px;
   font-weight: 400;
   color: var(--muted);
@@ -1142,7 +1333,7 @@ body {
   user-select: none;
 }
 .cg-year--decade {
-  color: #fff;
+  color: var(--bright);
   font-weight: 500;
   border-bottom: 1px solid rgba(255,255,255,0.18);
 }
@@ -1155,20 +1346,10 @@ body {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: opacity 0.12s ease, background-color 0.12s ease;
+  transition: opacity 0.12s ease;
   position: relative;
   overflow: visible;
   contain: layout;
-}
-.cg-cell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  border-radius: 4px;
-  transition: opacity 0.12s ease;
-  will-change: opacity;
 }
 .cg-cell--decade {
   border-bottom: 1px solid rgba(255,255,255,0.18);
@@ -1177,18 +1358,48 @@ body {
   cursor: default;
 }
 
-/* Logos — scale with cell size so they shrink cleanly on mobile */
-.cg-logo {
+/* Marks — a positioned box holding the white stamp with the color logo
+   stacked on top; --sel (0 default, 1 on the active school) crossfades
+   them. Sized against the cell so they shrink cleanly on mobile. */
+.cg-mark {
+  position: relative;
   width: 82%;
   height: 82%;
-  object-fit: contain;
   pointer-events: none;
+}
+.cg-logo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   image-rendering: auto;
+}
+.cg-logo--mono {
+  opacity: calc(0.92 * (1 - var(--sel, 0)));
+  transition: opacity 0.15s ease;
+}
+.cg-logo--color {
+  opacity: var(--sel, 0);
+  filter: var(--fx-base);
+  transition: opacity 0.15s ease;
+}
+/* Schools without a baked stamp fall back to filtering the color logo:
+   not as solid as a stamp, but legible until gen-mono-logos runs again. */
+.cg-logo--auto {
+  filter: var(--fx-base)
+    grayscale(calc(1 - var(--sel, 0)))
+    brightness(calc(1 + 0.55 * (1 - var(--sel, 0))));
+  transition: filter 0.15s ease;
+}
+.cg-fallback {
+  filter: grayscale(calc(1 - var(--sel, 0)));
+  transition: filter 0.15s ease;
 }
 /* For logos whose only variant is solid-dark on transparent (e.g. Long
    Beach State), flip to white so they read on the dark canvas. */
 .cg-logo--invert {
-  filter: invert(1) brightness(1.6);
+  --fx-base: invert(1) brightness(1.6);
 }
 
 /* Text fallback */
@@ -1225,18 +1436,18 @@ body {
 .cg-half--b {
   clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
-.cg-half .cg-logo,
+.cg-half .cg-mark,
 .cg-half .cg-fallback {
   width: 52%;
   height: 52%;
   position: absolute;
 }
-.cg-half--a .cg-logo,
+.cg-half--a .cg-mark,
 .cg-half--a .cg-fallback {
   top: 8%;
   left: 8%;
 }
-.cg-half--b .cg-logo,
+.cg-half--b .cg-mark,
 .cg-half--b .cg-fallback {
   bottom: 8%;
   right: 8%;
@@ -1259,6 +1470,20 @@ body {
   font-size: 11px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+/* Tablet and down: leaderboard drops below the grid as a full-width panel
+   with its own scroll instead of a sticky sidebar. */
+@media (max-width: 900px) {
+  .cg-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cg-lb {
+    position: static;
+    width: 100%;
+    max-height: 280px;
+  }
 }
 
 /* Responsive: on phones, shrink cells + year column so the full grid

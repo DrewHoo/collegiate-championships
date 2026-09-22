@@ -4,54 +4,53 @@
 // Year convention: football = fall season year; all other sports = tournament/championship year
 
 import scraped from './championshipData.scraped.json';
+import monoLogos from './monoLogos.json';
 
 // Each sport has:
 //   key       — referenced throughout the app
 //   name      — full display name (shown in tooltips and the info bar)
 //   short     — short code (currently unused; reserved for compact layouts)
-//   icon      — emoji shown in the column header. Prefer emoji that
-//               depict people doing the sport (⛹ 🏌 🏃 🏊 🤸 🤽 🤼) over
-//               ball-only or equipment-only emoji, reserving the
-//               equipment emoji for sports where no person variant
-//               exists (⚾ 🥎 🏈 ⚽ 🎾 🏑 🏐 🥍 🏒).
+//   icon      — basename of an SVG in src/icons/ (Fluent Emoji High
+//               Contrast, MIT — the only monochrome set with real lacrosse
+//               and field hockey glyphs; license alongside the files).
+//               Rendered as a CSS mask so it wears the theme's ink color.
+//   tag       — tiny text tag under the icon for the three running sports,
+//               which share one runner glyph: a shoe-vs-arena distinction
+//               nobody can decode at 16px, but XC/IN/OUT reads.
 //   gender    — "♂" or "♀" glyph rendered beneath the icon. Set on
 //               every sport (including single-gender sports) so the
 //               header layout is consistent across all columns.
 export const SPORTS = [
-  { key: 'football',  name: 'Football',                     short: 'FB',  icon: '🏈', gender: '♂' },
-  { key: 'mbb',       name: "Men's Basketball",             short: 'MBK', icon: '⛹',  gender: '♂' },
-  { key: 'wbb',       name: "Women's Basketball",           short: 'WBK', icon: '⛹',  gender: '♀' },
-  { key: 'baseball',  name: 'Baseball',                     short: 'BSB', icon: '⚾', gender: '♂' },
-  { key: 'softball',  name: 'Softball',                     short: 'SB',  icon: '🥎', gender: '♀' },
-  { key: 'mvb',       name: "Men's Volleyball",             short: 'MVB', icon: '🏐', gender: '♂' },
-  { key: 'wvb',       name: "Women's Volleyball",           short: 'WVB', icon: '🏐', gender: '♀' },
-  { key: 'mih',       name: "Men's Ice Hockey",             short: 'MIH', icon: '🏒', gender: '♂' },
-  { key: 'wih',       name: "Women's Ice Hockey",           short: 'WIH', icon: '🏒', gender: '♀' },
-  { key: 'msoc',      name: "Men's Soccer",                 short: 'MSO', icon: '⚽', gender: '♂' },
-  { key: 'wsoc',      name: "Women's Soccer",               short: 'WSO', icon: '⚽', gender: '♀' },
-  { key: 'mlax',      name: "Men's Lacrosse",               short: 'MLX', icon: '🥍', gender: '♂' },
-  { key: 'wlax',      name: "Women's Lacrosse",             short: 'WLX', icon: '🥍', gender: '♀' },
-  { key: 'wfh',       name: "Women's Field Hockey",         short: 'WFH', icon: '🏑', gender: '♀' },
-  { key: 'wgym',      name: "Women's Gymnastics",           short: 'WGY', icon: '🤸', gender: '♀' },
-  { key: 'mten',      name: "Men's Tennis",                 short: 'MTN', icon: '🎾', gender: '♂' },
-  { key: 'wten',      name: "Women's Tennis",               short: 'WTN', icon: '🎾', gender: '♀' },
-  { key: 'mgolf',     name: "Men's Golf",                   short: 'MGF', icon: '🏌', gender: '♂' },
-  { key: 'wgolf',     name: "Women's Golf",                 short: 'WGF', icon: '🏌', gender: '♀' },
-  { key: 'mswim',     name: "Men's Swimming & Diving",      short: 'MSW', icon: '🏊', gender: '♂' },
-  { key: 'wswim',     name: "Women's Swimming & Diving",    short: 'WSW', icon: '🏊', gender: '♀' },
-  { key: 'mwp',       name: "Men's Water Polo",             short: 'MWP', icon: '🤽', gender: '♂' },
-  { key: 'wwp',       name: "Women's Water Polo",           short: 'WWP', icon: '🤽', gender: '♀' },
-  { key: 'wrestling', name: 'Wrestling',                    short: 'WRS', icon: '🤼', gender: '♂' },
-  { key: 'mxc',       name: "Men's Cross Country",          short: 'MXC', icon: '👟', gender: '♂' },
-  { key: 'wxc',       name: "Women's Cross Country",        short: 'WXC', icon: '👟', gender: '♀' },
-  // Track & Field — 🏃 is the closest human-featured emoji for every
-  // running event, but we also need to distinguish XC, indoor T&F, and
-  // outdoor T&F. Indoor uses 🏟 (arena) and outdoor uses 🏅 (medal) so
-  // each sport has a unique icon at a glance while XC keeps the runner.
-  { key: 'mitf',      name: "Men's Indoor Track & Field",   short: 'MIT', icon: '🏟', gender: '♂' },
-  { key: 'witf',      name: "Women's Indoor Track & Field", short: 'WIT', icon: '🏟', gender: '♀' },
-  { key: 'motf',      name: "Men's Outdoor Track & Field",  short: 'MOT', icon: '🏃‍♂️', gender: '♂' },
-  { key: 'wotf',      name: "Women's Outdoor Track & Field",short: 'WOT', icon: '🏃‍♀️', gender: '♀' },
+  { key: 'football',  name: 'Football',                     short: 'FB',  icon: 'football',        gender: '♂' },
+  { key: 'mbb',       name: "Men's Basketball",             short: 'MBK', icon: 'basketball',      gender: '♂' },
+  { key: 'wbb',       name: "Women's Basketball",           short: 'WBK', icon: 'basketball',      gender: '♀' },
+  { key: 'baseball',  name: 'Baseball',                     short: 'BSB', icon: 'baseball',        gender: '♂' },
+  { key: 'softball',  name: 'Softball',                     short: 'SB',  icon: 'softball',        gender: '♀' },
+  { key: 'mvb',       name: "Men's Volleyball",             short: 'MVB', icon: 'volleyball',      gender: '♂' },
+  { key: 'wvb',       name: "Women's Volleyball",           short: 'WVB', icon: 'volleyball',      gender: '♀' },
+  { key: 'mih',       name: "Men's Ice Hockey",             short: 'MIH', icon: 'ice-hockey',      gender: '♂' },
+  { key: 'wih',       name: "Women's Ice Hockey",           short: 'WIH', icon: 'ice-hockey',      gender: '♀' },
+  { key: 'msoc',      name: "Men's Soccer",                 short: 'MSO', icon: 'soccer',          gender: '♂' },
+  { key: 'wsoc',      name: "Women's Soccer",               short: 'WSO', icon: 'soccer',          gender: '♀' },
+  { key: 'mlax',      name: "Men's Lacrosse",               short: 'MLX', icon: 'lacrosse',        gender: '♂' },
+  { key: 'wlax',      name: "Women's Lacrosse",             short: 'WLX', icon: 'lacrosse',        gender: '♀' },
+  { key: 'wfh',       name: "Women's Field Hockey",         short: 'WFH', icon: 'field-hockey',    gender: '♀' },
+  { key: 'wgym',      name: "Women's Gymnastics",           short: 'WGY', icon: 'gymnastics',      gender: '♀' },
+  { key: 'mten',      name: "Men's Tennis",                 short: 'MTN', icon: 'tennis',          gender: '♂' },
+  { key: 'wten',      name: "Women's Tennis",               short: 'WTN', icon: 'tennis',          gender: '♀' },
+  { key: 'mgolf',     name: "Men's Golf",                   short: 'MGF', icon: 'golf',            gender: '♂' },
+  { key: 'wgolf',     name: "Women's Golf",                 short: 'WGF', icon: 'golf',            gender: '♀' },
+  { key: 'mswim',     name: "Men's Swimming & Diving",      short: 'MSW', icon: 'swimming-diving', gender: '♂' },
+  { key: 'wswim',     name: "Women's Swimming & Diving",    short: 'WSW', icon: 'swimming-diving', gender: '♀' },
+  { key: 'mwp',       name: "Men's Water Polo",             short: 'MWP', icon: 'water-polo',      gender: '♂' },
+  { key: 'wwp',       name: "Women's Water Polo",           short: 'WWP', icon: 'water-polo',      gender: '♀' },
+  { key: 'wrestling', name: 'Wrestling',                    short: 'WRS', icon: 'wrestling',       gender: '♂' },
+  { key: 'mxc',       name: "Men's Cross Country",          short: 'MXC', icon: 'running', tag: 'XC',  gender: '♂' },
+  { key: 'wxc',       name: "Women's Cross Country",        short: 'WXC', icon: 'running', tag: 'XC',  gender: '♀' },
+  { key: 'mitf',      name: "Men's Indoor Track & Field",   short: 'MIT', icon: 'running', tag: 'IN',  gender: '♂' },
+  { key: 'witf',      name: "Women's Indoor Track & Field", short: 'WIT', icon: 'running', tag: 'IN',  gender: '♀' },
+  { key: 'motf',      name: "Men's Outdoor Track & Field",  short: 'MOT', icon: 'running', tag: 'OUT', gender: '♂' },
+  { key: 'wotf',      name: "Women's Outdoor Track & Field",short: 'WOT', icon: 'running', tag: 'OUT', gender: '♀' },
 ];
 
 // ESPN team ID, primary brand color, abbreviation
@@ -221,6 +220,17 @@ for (const sport of SPORTS) {
   if (data) Object.keys(data).forEach(y => allYears.add(Number(y)));
 }
 export const YEARS = [...allYears].sort((a, b) => a - b);
+
+// One-color white "ink density" stamps baked by scripts/gen-mono-logos.mjs
+// into public/logos/mono/. A CSS grayscale of the color logo keeps the
+// original luminance (navy marks stay near-invisible on the dark canvas);
+// the baked stamp is solidly white with alpha carrying the mark's structure.
+const MONO = new Set(monoLogos);
+export function getMonoLogoUrl(schoolName) {
+  const slug = schoolName.replace(/\W+/g, '');
+  if (!MONO.has(slug)) return null;
+  return `${import.meta.env.BASE_URL}logos/mono/${slug}.png`;
+}
 
 export function getLogoUrl(schoolName) {
   const school = SCHOOLS[schoolName];
