@@ -607,23 +607,17 @@ const Leaderboard = memo(function Leaderboard({ rows, onEnter, onLeave, onToggle
                   {info?.abbr || school.slice(0, 3)}
                 </span>
               )}
-              <span className="cg-lb-main">
-                <span className="cg-lb-top">
-                  <span className="cg-lb-name">{school}</span>
-                  <span className="cg-lb-count">{total}</span>
-                </span>
-                <span className="cg-lb-sub">
-                  <span
-                    className="cg-lb-bd"
-                    aria-label={`Men's: ${male}, Women's: ${female}, across ${nSports} sports`}
-                  >
-                    ♂{male}
-                    {' '}♀{female} · {nSports}{' '}
-                    {nSports === 1 ? 'sport' : 'sports'}
-                  </span>
-                  <YearSpark years={years} />
-                </span>
+              <span className="cg-lb-name">{school}</span>
+              <span
+                className="cg-lb-bd"
+                aria-label={`${nSports} ${nSports === 1 ? 'sport' : 'sports'}, men's: ${male}, women's: ${female}`}
+              >
+                {nSports}
+                {' '}sp · ♂{male}
+                {' '}♀{female}
               </span>
+              <YearSpark years={years} />
+              <span className="cg-lb-count">{total}</span>
             </button>
           );
         })}
@@ -1095,7 +1089,7 @@ body {
 
 /* Leaderboard sidebar */
 .cg-lb {
-  width: 236px;
+  width: 292px;
   flex-shrink: 0;
   position: sticky;
   top: 16px;
@@ -1141,8 +1135,8 @@ body {
   color: var(--bright);
 }
 .cg-lb-logo {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
   flex-shrink: 0;
   filter: var(--fx-base);
@@ -1156,20 +1150,9 @@ body {
   font-weight: 700;
   color: #fff;
 }
-.cg-lb-main {
+.cg-lb-name {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.cg-lb-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-.cg-lb-name {
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -1179,23 +1162,19 @@ body {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 500;
   font-size: 12px;
+  min-width: 16px;
+  text-align: right;
 }
-.cg-lb-sub {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
+.cg-lb-bd {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 500;
   font-size: 10px;
-  line-height: 1;
   color: var(--muted);
-}
-.cg-lb-bd {
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .cg-lb-spark {
-  width: 56px;
+  width: 40px;
   height: 9px;
   flex-shrink: 0;
   fill: currentColor;
