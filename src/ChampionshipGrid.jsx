@@ -145,6 +145,7 @@ export default function ChampionshipGrid() {
   const [selection, setSelection] = useState(initialSelectionFromUrl);
   const [copied, setCopied] = useState(false);
   const scopeRef = useRef(null);
+  const tipRef = useRef(null);
 
   // Keep ?s= in sync with the selection and drop legacy params.
   useEffect(() => {
@@ -323,6 +324,46 @@ export default function ChampionshipGrid() {
         : `${base} has-active ${activeSchools.map(activeClass).join(' ')}`;
   }, [activeSchools]);
 
+  // Sport-name tooltip. A single fixed-position element positioned on hover
+  // via delegation, instead of a per-header ::after — the header sits inside
+  // the grid's `overflow-x: clip`, so a ::after tooltip on any column within
+  // half its width of either edge gets cut off. Fixed positioning escapes
+  // the clip, and we clamp to the viewport so it's never off-screen.
+  useEffect(() => {
+    const scope = scopeRef.current;
+    const tip = tipRef.current;
+    if (!scope || !tip) return;
+    const show = (hdr) => {
+      tip.textContent = hdr.dataset.name;
+      const r = hdr.getBoundingClientRect();
+      const tw = tip.offsetWidth;
+      const left = Math.max(
+        8,
+        Math.min(r.left + r.width / 2 - tw / 2, window.innerWidth - tw - 8),
+      );
+      tip.style.left = `${left}px`;
+      tip.style.top = `${r.bottom + 4}px`;
+      tip.style.opacity = '1';
+    };
+    const hide = () => {
+      tip.style.opacity = '0';
+    };
+    const onOver = (e) => {
+      const hdr = e.target.closest('.cg-sport-hdr');
+      if (hdr) show(hdr);
+    };
+    const onOut = (e) => {
+      const hdr = e.target.closest('.cg-sport-hdr');
+      if (hdr && !hdr.contains(e.relatedTarget)) hide();
+    };
+    scope.addEventListener('mouseover', onOver);
+    scope.addEventListener('mouseout', onOut);
+    return () => {
+      scope.removeEventListener('mouseover', onOver);
+      scope.removeEventListener('mouseout', onOut);
+    };
+  }, []);
+
   // Leaderboard rows: every school with at least one title, most titles
   // first, ties alphabetical. Each row carries the summary-line stats and
   // a tooltip listing the school's top sports.
@@ -353,6 +394,7 @@ export default function ChampionshipGrid() {
     <div className="cg-page" onClick={clearSelection}>
       <style>{STYLES}</style>
       <style>{SCHOOL_HIGHLIGHT_CSS}</style>
+      <div className="cg-tip" ref={tipRef} aria-hidden="true" />
 
       {/* Header */}
       <header className="cg-header">
@@ -1284,12 +1326,10 @@ body {
 /* Custom hover tooltip for sport names — replaces the native title
    attribute because browser tooltips take ~500ms to show and flicker
    out on fast mouse movement. */
-.cg-sport-hdr::after {
-  content: attr(data-name);
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
+.cg-tip {
+  position: fixed;
+  left: 0;
+  top: 0;
   background: #453e40;
   color: var(--bright);
   border: 1px solid rgba(255,255,255,0.12);
@@ -1301,27 +1341,9 @@ body {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  z-index: 30;
+  z-index: 100;
   box-shadow: 0 4px 14px rgba(0,0,0,0.4);
   transition: opacity 0.12s ease;
-}
-/* Last sport header: anchor the tooltip to the column's right edge so it
-   stays within the grid's clipped x-overflow instead of being cut off. */
-.cg-sport-hdr:has(+ .cg-year)::after {
-  left: auto;
-  right: 0;
-  transform: none;
-}
-/* First sport header (right after the corner): the centered tooltip would
-   overflow the grid's left edge and get clipped, so anchor it to the
-   column's left edge and let it extend rightward. */
-.cg-corner + .cg-sport-hdr::after {
-  left: 0;
-  right: auto;
-  transform: none;
-}
-.cg-sport-hdr:hover::after {
-  opacity: 1;
 }
 
 /* Year labels */
