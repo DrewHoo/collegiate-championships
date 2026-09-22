@@ -472,6 +472,10 @@ export default function ChampionshipGrid() {
           Year 2020 dashes indicate seasons canceled due to COVID-19.
           Data sourced from NCAA records.
         </p>
+        <p>
+          Also: <a href="https://drewhoover.com/hostile-territory/">Hostile Territory</a> &mdash;
+          every coach&rsquo;s road record against the AP top 10 since 1990.
+        </p>
       </footer>
     </div>
   );
@@ -1515,6 +1519,17 @@ body {
   margin-top: 20px;
   max-width: 600px;
   text-align: center;
+}
+.cg-footer p + p {
+  margin-top: 8px;
+}
+.cg-footer a {
+  color: var(--text);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.cg-footer a:hover {
+  color: var(--bright);
 }
 .cg-footer p {
   font-size: 11px;
