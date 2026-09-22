@@ -1312,6 +1312,14 @@ body {
   right: 0;
   transform: none;
 }
+/* First sport header (right after the corner): the centered tooltip would
+   overflow the grid's left edge and get clipped, so anchor it to the
+   column's left edge and let it extend rightward. */
+.cg-corner + .cg-sport-hdr::after {
+  left: 0;
+  right: auto;
+  transform: none;
+}
 .cg-sport-hdr:hover::after {
   opacity: 1;
 }
