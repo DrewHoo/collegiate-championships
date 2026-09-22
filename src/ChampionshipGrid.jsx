@@ -652,6 +652,15 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
               <span className="cg-pill-count">
                 {titleCounts[school]?.total || 0}
               </span>
+              {titleCounts[school] && (
+                <span
+                  className="cg-pill-bd"
+                  aria-label={`Men's: ${titleCounts[school].male}, Women's: ${titleCounts[school].female}`}
+                >
+                  ♂{titleCounts[school].male}
+                  {' '}♀{titleCounts[school].female}
+                </span>
+              )}
               <button
                 type="button"
                 className="cg-pill-x"
@@ -874,6 +883,13 @@ body {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 500;
   font-size: 13px;
+}
+.cg-pill-bd {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .cg-pill-x {
   background: none;
