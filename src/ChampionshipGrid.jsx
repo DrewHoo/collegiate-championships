@@ -47,7 +47,9 @@ const SCHOOL_HIGHLIGHT_CSS = (() => {
     }
   }
   const esc = (s) => s.replace(/["\\]/g, '\\$&');
-  let css = '.cg-active-scope.has-active .cg-cell { opacity: 0.22; }\n';
+  // Cells rest at the recessive grey (see .cg-cell opacity) whether or not
+  // anything is active; these rules only lift the active school's cells.
+  let css = '';
   for (const s of present) {
     const e = esc(s);
     const c = activeClass(s);
@@ -1353,6 +1355,10 @@ body {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   cursor: pointer;
+  /* The resting board is recessive grey — the same level cells dim to when
+     another school is active — so the neutral page never glares and an
+     active school's full-opacity color is the only bright thing on it. */
+  opacity: 0.22;
   transition: opacity 0.12s ease;
   position: relative;
   overflow: visible;
