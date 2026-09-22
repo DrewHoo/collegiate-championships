@@ -463,6 +463,9 @@ export default function ChampionshipGrid() {
           champions are University Division champions. Women's columns begin
           when the NCAA first sponsored those championships, in 1981–82
           (rowing 1997, ice hockey and water polo 2001, wrestling 2026).
+          There is no men's rowing column because the NCAA has never
+          sponsored one: the IRA has run that national championship since
+          1895, older than the NCAA itself.
           Men's volleyball and gymnastics, both water polos, and women's
           gymnastics, ice hockey, and wrestling are National Collegiate
           titles, decided across all divisions.
