@@ -274,17 +274,17 @@ export default function ChampionshipGrid() {
 
   const shareTitle = useMemo(() => {
     if (selection.length === 0) {
-      return 'Every NCAA D-I national champion since 1990, in one grid';
+      return 'Every NCAA D-I national champion since 1972, in one grid';
     }
     if (selection.length === 1) {
-      return `Every NCAA D-I national title ${selection[0]} has won since 1990`;
+      return `Every NCAA D-I national title ${selection[0]} has won since 1972`;
     }
     if (selection.length === 2) {
-      return `${selection[0]} vs ${selection[1]} — NCAA D-I championships since 1990`;
+      return `${selection[0]} vs ${selection[1]} — NCAA D-I championships since 1972`;
     }
     const head = selection.slice(0, -1).join(', ');
     const tail = selection[selection.length - 1];
-    return `${head} vs ${tail} — NCAA D-I championships since 1990`;
+    return `${head} vs ${tail} — NCAA D-I championships since 1972`;
   }, [selection]);
 
   const copyLink = useCallback(async (e) => {
@@ -407,9 +407,23 @@ export default function ChampionshipGrid() {
         />
       </div>
 
+      <p className="cg-method">
+        Why these {SPORTS.length} sports? Each clears at least two of three
+        lenses &mdash; sponsorship (how many Division&nbsp;I schools field a
+        team), popularity (attendance and viewership), and Olympic
+        relevance &mdash; or is the gender counterpart of a sport that does.
+      </p>
+
       <footer className="cg-footer">
         <p>
           Football uses AP poll champion (pre-BCS era) and BCS/CFP champion.
+          Before the 1973 split into divisions, football and basketball
+          champions are University Division champions. Women's columns begin
+          when the NCAA first sponsored those championships, in 1981–82
+          (rowing 1997, ice hockey and water polo 2001, wrestling 2026).
+          Men's volleyball and gymnastics, both water polos, and women's
+          gymnastics, ice hockey, and wrestling are National Collegiate
+          titles, decided across all divisions.
           Year 2020 dashes indicate seasons canceled due to COVID-19.
           Data sourced from NCAA records.
         </p>
@@ -1450,6 +1464,17 @@ body {
   color: rgba(255,255,255,0.15);
   font-size: 16px;
   font-weight: 300;
+}
+
+/* Methodology callout */
+.cg-method {
+  margin-top: 16px;
+  max-width: 640px;
+  text-align: center;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 /* Footer */

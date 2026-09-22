@@ -1,12 +1,27 @@
 # Collegiate Championships
 
-**Who has the most collegiate sports championships?** — every NCAA Division I national champion in 30 sports from 1990 to present, laid out as a hoverable grid of team logos. Hover, tap, or pick schools to highlight every other championship a school has won across all sports and years.
+**Who has the most collegiate sports championships?** — every NCAA Division I national champion in 30 sports from 1972 to present, laid out as a hoverable grid of team logos. Hover, tap, or pick schools to highlight every other championship a school has won across all sports and years.
 
 **Live site:** https://drewhoover.com/collegiate-championships/
 
 Built with React + Vite and deployed to GitHub Pages.
 
 > Extracted from [`cfb-all-time-records`](https://github.com/DrewHoo/cfb-all-time-records), which paired this grid with an FBS football records table. The football table stayed in that repo; this repo is the championship grid on its own so the URL isn't football-specific.
+
+## Which sports make the grid
+
+A sport is included when it clears at least two of three lenses — sponsorship
+(how many D-I schools field a team), popularity (attendance and viewership),
+and Olympic relevance — or is the gender counterpart of a sport that does.
+That rule admits every long-standing championship people expect (football
+passes on sponsorship + popularity; swimming on sponsorship + Olympic;
+wrestling on popularity + sponsorship) plus women's rowing, men's gymnastics,
+and women's wrestling — and it is why women's bowling, fencing, rifle, and
+skiing are absent (one lens at most, and the last three are coed
+championships that don't fit the grid's men's/women's structure). Six
+columns are National Collegiate rather than Division I titles, decided
+across all divisions: men's volleyball and gymnastics, both water polos,
+women's gymnastics, ice hockey, and wrestling.
 
 ## Data
 
@@ -16,9 +31,9 @@ Championship data is scraped from Wikipedia by `scripts/fetch-data.mjs` and writ
 node scripts/fetch-data.mjs
 ```
 
-The scraper uses cheerio to parse `<table class="wikitable">` elements on each sport's Wikipedia page, expanding `rowspan`/`colspan` so multi-row headers resolve correctly, merging data from multi-era tables (tennis, golf, swimming) on the same page, and normalizing team names via a shared rename map. Football is handled by a dedicated parser that collapses the NCAA FBS consensus champions table — which lists one row per (year, selector) pair — into a single winner per year, preferring CFP > BCS > AP > Coaches. A handful of GitHub-hosted CSVs are used where Wikipedia coverage is spotty (currently just Men's Cross Country).
+The scraper uses cheerio to parse `<table class="wikitable">` elements on each sport's Wikipedia page, expanding `rowspan`/`colspan` so multi-row headers resolve correctly, merging data from multi-era tables (tennis, golf, swimming) on the same page, scoping the scrape to one table via `tableMatch` where a page also carries a non-NCAA champions table (softball's AIAW era), and normalizing team names via a shared rename map. Football is handled by a dedicated parser that collapses the NCAA FBS consensus champions table — which lists one row per (year, selector) pair — into one winner per year, preferring CFP > BCS > AP > Coaches, and emitting both schools for the seasons those selectors split (1973, 1974, 1978, 1990, 1991, 1997, 2003). Coverage runs from 1972; the 1972 football and men's basketball champions predate the 1973 divisional split and are University Division champions.
 
-Adding a new sport is a matter of appending one entry to the `SOURCES` array in `scripts/fetch-data.mjs` — URL, parser type (`wikipediaTable`, `footballConsensus`, or `csv`), and optional `yearCol` / `winnerCol` / `rename` hints — and re-running the scraper.
+Adding a new sport is a matter of appending one entry to the `SOURCES` array in `scripts/fetch-data.mjs` — URL, parser type (`wikipediaTable`, `footballConsensus`, or `csv`), and optional `yearCol` / `winnerCol` / `rename` / `tableMatch` hints — and re-running the scraper.
 
 Three helper scripts sit alongside the main scraper:
 

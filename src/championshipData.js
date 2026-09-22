@@ -45,6 +45,9 @@ export const SPORTS = [
   { key: 'mwp',       name: "Men's Water Polo",             short: 'MWP', icon: 'water-polo',      gender: '♂' },
   { key: 'wwp',       name: "Women's Water Polo",           short: 'WWP', icon: 'water-polo',      gender: '♀' },
   { key: 'wrestling', name: 'Wrestling',                    short: 'WRS', icon: 'wrestling',       gender: '♂' },
+  { key: 'wwr',       name: "Women's Wrestling",            short: 'WWR', icon: 'wrestling',       gender: '♀' },
+  { key: 'wrow',      name: "Women's Rowing",               short: 'WRO', icon: 'rowing',          gender: '♀' },
+  { key: 'mgym',      name: "Men's Gymnastics",             short: 'MGY', icon: 'gymnastics',      gender: '♂' },
   { key: 'mxc',       name: "Men's Cross Country",          short: 'MXC', icon: 'running', tag: 'XC',  gender: '♂' },
   { key: 'wxc',       name: "Women's Cross Country",        short: 'WXC', icon: 'running', tag: 'XC',  gender: '♀' },
   { key: 'mitf',      name: "Men's Indoor Track & Field",   short: 'MIT', icon: 'running', tag: 'IN',  gender: '♂' },
@@ -170,6 +173,35 @@ export const SCHOOLS = {
   'Loyola Chicago':     { id: 2350,  color: '#9D1244', abbr: 'LUC' },
   'George Mason':       { id: 2244,  color: '#016600', abbr: 'GMU' },
   'Lewis':              { id: null,  color: '#B80000', abbr: 'LEW', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/5/53/Lewis_Flyers_2023_logo.svg' },
+  // --- Rowing / men's gymnastics / women's wrestling additions ---
+  'Brown':              { id: 225,   color: '#4E3629', abbr: 'BRWN' },
+  'Southern Illinois':  { id: 79,    color: '#720000', abbr: 'SIU' },
+  'Indiana State':      { id: 282,   color: '#00669A', abbr: 'INST' },
+  'McKendree':          { id: 2816,  color: '#4F2D7F', abbr: 'MCK' },
+  // --- 1972–1989 backfill additions ---
+  'Bowling Green':      { id: 189,   color: '#FE5000', abbr: 'BGSU' },
+  'Hartwick':           { id: null,  color: '#005EB8', abbr: 'HART', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Hartwick_hawks_logo.png' },
+  'Houston':            { id: 248,   color: '#C8102E', abbr: 'HOU' },
+  'Howard':             { id: 47,    color: '#003A63', abbr: 'HOW' },
+  'Louisiana Tech':     { id: 2348,  color: '#003087', abbr: 'LT' },
+  'Manhattan':          { id: 2363,  color: '#4F8537', abbr: 'MAN' },
+  'Marquette':          { id: 269,   color: '#003366', abbr: 'MARQ' },
+  'Michigan Tech':      { id: 2392,  color: '#FFCD00', abbr: 'MTU' },
+  'New Hampshire':      { id: 160,   color: '#003591', abbr: 'UNH' },
+  'Pacific':            { id: 279,   color: '#F47820', abbr: 'PAC' },
+  'Pittsburgh':         { id: 221,   color: '#003594', abbr: 'PITT' },
+  'Rensselaer':         { id: 2528,  color: '#D6001C', abbr: 'RPI' },
+  'Saint Louis':        { id: 139,   color: '#00539C', abbr: 'SLU' },
+  'San Diego State':    { id: 21,    color: '#A6192E', abbr: 'SDSU' },
+  'San Francisco':      { id: 2539,  color: '#00543C', abbr: 'SF' },
+  'SIU Edwardsville':   { id: 2565,  color: '#E4002B', abbr: 'SIUE' },
+  'SMU':                { id: 2567,  color: '#C8102E', abbr: 'SMU' },
+  'Temple':             { id: 218,   color: '#A41E35', abbr: 'TEM' },
+  'Trinity (TX)':       { id: null,  color: '#862633', abbr: 'TRIN', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/f/f1/Trinity_Tigers_logo.svg' },
+  'Tulsa':              { id: 202,   color: '#003595', abbr: 'TLSA' },
+  'UTEP':               { id: 2638,  color: '#FF8200', abbr: 'UTEP' },
+  'Washington State':   { id: 265,   color: '#A60F2D', abbr: 'WSU' },
+  'Wichita State':      { id: 2724,  color: '#FFCD00', abbr: 'WICH', darkLogo: true },
 };
 
 export const CHAMPIONSHIPS = {
@@ -202,6 +234,15 @@ export const CHAMPIONSHIPS = {
   mitf: scraped.mitf || {},
   witf: scraped.witf || {},
   motf: scraped.motf || {},
+  wrow: scraped.wrow || {},
+  mgym: scraped.mgym || {},
+  // Women's wrestling became the NCAA's 91st championship in March 2026
+  // (National Collegiate; McKendree over Iowa, 171–166). Wikipedia has no
+  // year-by-year champions table yet — memory entry until one exists, then
+  // a scraper source supersedes it.
+  wwr: {
+    2026: 'McKendree',
+  },
   wotf: {
     ...(scraped.wotf || {}),
     // 2026: Wikipedia's year-by-year champions table lags, but the same
