@@ -344,55 +344,6 @@ export default function ChampionshipGrid() {
         />
       </div>
 
-      {/* Info bar */}
-      <div className={`cg-info ${activeSchools.length > 0 ? 'cg-info--active' : ''}`}>
-        {activeSchools.length > 0 ? (
-          <div className="cg-info-inner">
-            {activeSchools.map((s, i) => {
-              const info = SCHOOLS[s];
-              const logo = getLogoUrl(s);
-              return (
-                <Fragment key={s}>
-                  {i > 0 && <span className="cg-info-vs">vs</span>}
-                  <div className="cg-info-school">
-                    {logo && (
-                      <img
-                        src={logo}
-                        alt=""
-                        className={
-                          'cg-info-logo' +
-                          (info?.invertLogo ? ' cg-logo--invert' : '')
-                        }
-                      />
-                    )}
-                    <span className="cg-info-name">{s}</span>
-                    <span className="cg-info-count">{schoolTitles[s]?.total || 0}</span>
-                    {schoolTitles[s] && (schoolTitles[s].male > 0 || schoolTitles[s].female > 0) && (
-                      <span className="cg-info-breakdown" aria-label="Breakdown by sport gender">
-                        <span className="cg-info-bd">
-                          <span aria-hidden="true">♂</span>
-                          <span className="cg-sr-only">Men&rsquo;s:</span>
-                          {schoolTitles[s].male}
-                        </span>
-                        <span className="cg-info-bd">
-                          <span aria-hidden="true">♀</span>
-                          <span className="cg-sr-only">Women&rsquo;s:</span>
-                          {schoolTitles[s].female}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </Fragment>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="cg-info-placeholder">
-            Pick schools to compare
-          </div>
-        )}
-      </div>
-
       {/* Share row */}
       <div className="cg-share" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="cg-share-btn" onClick={copyLink}>
@@ -679,12 +630,13 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
             <span
               key={school}
               className="cg-pill"
+              title={school}
               style={{ borderColor: info?.color || 'rgba(255,255,255,0.2)' }}
             >
               {logo ? (
                 <img
                   src={logo}
-                  alt=""
+                  alt={school}
                   className={
                     'cg-pill-logo' + (info?.invertLogo ? ' cg-logo--invert' : '')
                   }
@@ -697,7 +649,9 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
                   {info?.abbr || school.slice(0, 3)}
                 </span>
               )}
-              <span className="cg-pill-name">{school}</span>
+              <span className="cg-pill-count">
+                {titleCounts[school]?.total || 0}
+              </span>
               <button
                 type="button"
                 className="cg-pill-x"
@@ -731,8 +685,7 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
         <div ref={listRef} className="cg-picker-menu" role="listbox">
           {filtered.slice(0, 80).map((school, i) => {
             const info = SCHOOLS[school];
-            const logo = getMonoLogoUrl(school) || getLogoUrl(school);
-            const isAuto = !getMonoLogoUrl(school);
+            const logo = getLogoUrl(school);
             const isActive = i === activeIdx;
             return (
               <div
@@ -755,7 +708,6 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
                     alt=""
                     className={
                       'cg-picker-opt-logo' +
-                      (isAuto ? ' cg-picker-opt-logo--auto' : '') +
                       (info?.invertLogo ? ' cg-logo--invert' : '')
                     }
                   />
@@ -918,10 +870,10 @@ body {
   font-size: 8px;
   color: #fff;
 }
-.cg-pill-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.cg-pill-count {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
 }
 .cg-pill-x {
   background: none;
@@ -982,7 +934,7 @@ body {
   height: 22px;
   object-fit: contain;
   flex-shrink: 0;
-  filter: var(--fx-base) var(--fx-mono);
+  filter: var(--fx-base);
 }
 .cg-picker-opt-logo--text {
   display: flex;
@@ -1001,103 +953,6 @@ body {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 500;
   font-size: 11px;
-  color: var(--muted);
-}
-
-/* Info bar */
-.cg-info {
-  width: 100%;
-  max-width: 720px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  margin-bottom: 16px;
-  transition: border-color 0.2s, background 0.2s;
-  overflow: hidden;
-  padding: 0;
-}
-.cg-info--active {
-  border-color: rgba(255,255,255,0.12);
-}
-.cg-info-inner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: nowrap;
-  /* Fit the inner row to the info-bar height so overflow-x scrolls instead
-     of stretching the container vertically when many schools are active. */
-  height: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0 12px;
-  scrollbar-width: thin;
-}
-.cg-info-school {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.cg-info-vs {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.cg-info-logo {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
-  filter: var(--fx-base);
-}
-.cg-info-name {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--bright);
-}
-.cg-info-count {
-  font-size: 12px;
-  color: var(--muted);
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 500;
-}
-.cg-info-breakdown {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding-left: 6px;
-  margin-left: 2px;
-  border-left: 1px solid rgba(255,255,255,0.12);
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 500;
-  font-size: 11px;
-  color: var(--muted);
-}
-.cg-info-bd {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-.cg-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.cg-info-placeholder {
-  font-size: 13px;
   color: var(--muted);
 }
 
@@ -1502,9 +1357,6 @@ body {
 @media (max-width: 640px) {
   .cg-page { padding: 12px 4px 24px; }
   .cg-header h1 { font-size: 18px; }
-  .cg-info { height: 40px; }
-  .cg-info-name { font-size: 13px; }
-  .cg-info-placeholder { font-size: 11px; padding: 0 8px; text-align: center; }
 
   .cg-scroll {
     overflow-x: hidden;
