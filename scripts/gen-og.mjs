@@ -1,114 +1,138 @@
-// Generate 1200x630 OG preview images for the two pages.
-// Renders SVG templates and rasterizes them with sharp.
-// Run with: node scripts/gen-og.mjs
+// Generate the 1200x630 OG preview image.
+// Renders an SVG frame, then composites the real one-color logo stamps
+// (public/logos/mono/) into a mini-board with one school lit in its brand
+// color — mirroring the site's monochrome-board / color-is-the-highlight
+// identity. Run with: node scripts/gen-og.mjs
+//
+// Fonts: librsvg (sharp's SVG backend) can't load the site's web fonts, so
+// the title falls back to a condensed system sans. The look is close; the
+// copy and board are what matter for the share card.
 
 import sharp from 'sharp';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outDir = resolve(__dirname, '..', 'public');
+const root = resolve(__dirname, '..');
+const outDir = resolve(root, 'public');
 mkdirSync(outDir, { recursive: true });
 
 const W = 1200;
 const H = 630;
 
-const BG = '#0c0f14';
-const SURFACE = '#151921';
+// Cinder-track theme (matches src/ChampionshipGrid.jsx :root).
+const BG = '#2e2a2c';
+const SURFACE = '#363134';
 const BORDER = 'rgba(255,255,255,0.08)';
-const TEXT = '#ffffff';
-const MUTED = '#9ba3b5';
-const ACCENT = '#fbbf24';
+const BRIGHT = '#eae4e2';
+const MUTED = '#a29699';
+const ACCENT = '#e2977e';
 
-// Shared SVG chrome: background, bordered card, footer tag
-const frame = (inner) => `
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <defs>
-    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#11151c"/>
-      <stop offset="100%" stop-color="#0a0d12"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#c084fc"/>
-    </linearGradient>
-  </defs>
-  <rect width="${W}" height="${H}" fill="url(#bgGrad)"/>
-  ${inner}
-  <text x="60" y="580" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="18" fill="${MUTED}" font-weight="500">
-    drewhoover.com/collegiate-championships
-  </text>
-  <rect x="60" y="600" width="80" height="3" fill="url(#accent)"/>
-</svg>`;
+// The lit school and its brand color, from SCHOOLS. Wisconsin's bright
+// red reads on the dark card (Stanford's #8c1515 cardinal is too dark),
+// and the block-W stamp is recognizable at this size.
+const HERO = 'Wisconsin';
+const HERO_RGB = { r: 0xc5, g: 0x05, b: 0x0c };
+// A warm light grey for the recessive stamps — the muted "board".
+const STAMP_GREY = { r: 0xb2, g: 0xaa, b: 0xad };
 
-// ---- OG 1: Championship grid ----
-// We draw a stylized mini-grid that's evocative rather than exact.
-const gridCells = () => {
-  // 23 sports × 18 years worth of cells (trimmed preview)
-  const cols = 23;
-  const rows = 14;
-  const cellW = 32;
-  const cellH = 22;
-  const gridX = 620;
-  const gridY = 120;
-  const palette = [
-    '#991b1b', '#1e3a8a', '#c2410c', '#166534', '#7c2d12',
-    '#78350f', '#1d4ed8', '#9a3412', '#14532d', '#9f1239',
-  ];
-  const cells = [];
-  // Deterministic pseudo-random fill
-  let seed = 42;
-  const rand = () => {
-    seed = (seed * 9301 + 49297) % 233280;
-    return seed / 233280;
-  };
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = gridX + c * cellW;
-      const y = gridY + r * cellH;
-      const filled = rand() > 0.18;
-      const color = filled ? palette[Math.floor(rand() * palette.length)] : SURFACE;
-      cells.push(
-        `<rect x="${x}" y="${y}" width="${cellW - 2}" height="${cellH - 2}" rx="2" fill="${color}" opacity="${filled ? 0.85 : 0.35}"/>`,
-      );
-    }
-  }
-  return cells.join('\n');
+const TITLE_FONT = "Oswald, 'Barlow Condensed', 'Arial Narrow', Helvetica, Arial, sans-serif";
+const BODY_FONT = "Barlow, Helvetica, Arial, sans-serif";
+
+// --- Mini-board geometry -----------------------------------------------------
+const CARD = { x: 596, y: 70, w: 544, h: 490 };
+const COLS = 14;
+const ROWS = 13;
+const PAD = 14;
+const cellW = (CARD.w - PAD * 2) / COLS;
+const cellH = (CARD.h - PAD * 2) / ROWS;
+const stampSize = Math.round(Math.min(cellW, cellH) * 0.82);
+
+// Deterministic PRNG so the card is stable across builds.
+let seed = 1972;
+const rand = () => {
+  seed = (seed * 9301 + 49297) % 233280;
+  return seed / 233280;
 };
 
-const ogGrid = frame(`
-  <!-- Title block -->
-  <text x="60" y="130" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="28" fill="${MUTED}" font-weight="600" letter-spacing="2">
-    NCAA DIVISION I
-  </text>
-  <text x="60" y="210" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="64" fill="${TEXT}" font-weight="700" letter-spacing="-1">
-    Every Champion
-  </text>
-  <text x="60" y="278" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="64" fill="${TEXT}" font-weight="700" letter-spacing="-1">
-    Since 1990
-  </text>
-  <text x="60" y="340" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="28" fill="${ACCENT}" font-weight="600">
-    30 sports · one grid
-  </text>
-  <text x="60" y="395" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="20" fill="${MUTED}" font-weight="400">
-    Hover any cell to trace a school's
-  </text>
-  <text x="60" y="422" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="20" fill="${MUTED}" font-weight="400">
-    entire title history.
-  </text>
+const slugs = JSON.parse(readFileSync(resolve(root, 'src', 'monoLogos.json'), 'utf8'))
+  .filter((s) => s !== HERO.replace(/\W+/g, ''));
+const heroSlug = HERO.replace(/\W+/g, '');
 
-  <!-- Mini grid illustration -->
-  <rect x="600" y="90" width="560" height="420" rx="10" fill="${SURFACE}" stroke="${BORDER}" stroke-width="1"/>
-  ${gridCells()}
-`);
-
-async function rasterize(svg, name) {
-  const outPath = resolve(outDir, name);
-  await sharp(Buffer.from(svg))
-    .png({ compressionLevel: 9 })
-    .toFile(outPath);
-  console.log(`wrote ${outPath}`);
+// Assign each filled cell a school; ~1 in 7 cells is the hero (lit), the
+// rest are muted greyscale stamps, ~16% left empty.
+const layout = [];
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    if (rand() < 0.16) continue; // empty cell
+    const hero = rand() < 0.14;
+    layout.push({
+      r,
+      c,
+      slug: hero ? heroSlug : slugs[Math.floor(rand() * slugs.length)],
+      hero,
+    });
+  }
 }
 
-await rasterize(ogGrid, 'og-grid.png');
+const frame = `
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${BG}"/>
+  <text x="64" y="140" font-family="${TITLE_FONT}" font-size="27" fill="${MUTED}" font-weight="500" letter-spacing="3">NCAA DIVISION I</text>
+  <text x="62" y="212" font-family="${TITLE_FONT}" font-size="62" fill="${BRIGHT}" font-weight="600" letter-spacing="1">EVERY CHAMPION</text>
+  <text x="62" y="278" font-family="${TITLE_FONT}" font-size="62" fill="${BRIGHT}" font-weight="600" letter-spacing="1">SINCE 1972</text>
+  <text x="64" y="336" font-family="${TITLE_FONT}" font-size="27" fill="${ACCENT}" font-weight="500" letter-spacing="1">33 SPORTS · ONE GRID</text>
+  <text x="64" y="392" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">Every NCAA D-I national champion, laid</text>
+  <text x="64" y="419" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">out as a board of team logos. Pick a</text>
+  <text x="64" y="446" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">school to trace every title it has won.</text>
+  <rect x="${CARD.x}" y="${CARD.y}" width="${CARD.w}" height="${CARD.h}" rx="10" fill="${SURFACE}" stroke="${BORDER}" stroke-width="1"/>
+  <text x="64" y="586" font-family="${BODY_FONT}" font-size="18" fill="${MUTED}" font-weight="500">drewhoover.com/collegiate-championships</text>
+  <rect x="64" y="602" width="80" height="3" fill="${ACCENT}"/>
+</svg>`;
+
+async function main() {
+  const base = sharp(Buffer.from(frame)).png();
+
+  // Recolor a white-alpha stamp to a solid color, keeping its shape (the
+  // alpha channel). sharp.tint() preserves luminance, so it can't darken a
+  // white stamp — we set RGB directly and leave alpha untouched.
+  const recolor = async (slug, color) => {
+    const { data, info } = await sharp(resolve(outDir, 'logos', 'mono', `${slug}.png`))
+      .resize(stampSize, stampSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = color.r;
+      data[i + 1] = color.g;
+      data[i + 2] = color.b;
+    }
+    return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+      .png()
+      .toBuffer();
+  };
+
+  const composites = [];
+  const cache = new Map();
+  for (const { r, c, slug, hero } of layout) {
+    const key = `${slug}:${hero ? 'hero' : 'grey'}`;
+    let buf = cache.get(key);
+    if (!buf) {
+      buf = await recolor(slug, hero ? HERO_RGB : STAMP_GREY);
+      cache.set(key, buf);
+    }
+    const left = Math.round(CARD.x + PAD + c * cellW + (cellW - stampSize) / 2);
+    const top = Math.round(CARD.y + PAD + r * cellH + (cellH - stampSize) / 2);
+    composites.push({ input: buf, left, top });
+  }
+
+  const outPath = resolve(outDir, 'og-grid.png');
+  await base
+    .composite(composites)
+    .png({ compressionLevel: 9 })
+    .toFile(outPath);
+  console.log(`wrote ${outPath} (${composites.length} stamps, hero: ${HERO})`);
+}
+
+await main();
