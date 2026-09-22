@@ -212,15 +212,26 @@ export default function ChampionshipGrid() {
     [schoolTitles],
   );
 
+  // Hover intent: a school only highlights after the cursor has rested on
+  // its mark for 100ms, so sweeping across the board reads as a calm
+  // neutral grid instead of a strobe. Entering a different school's cell
+  // drops the previous highlight immediately and restarts the dwell timer.
+  const hoverTimer = useRef(null);
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
+
   const onEnter = useCallback((school) => {
-    setHighlighted(school);
+    clearTimeout(hoverTimer.current);
+    setHighlighted((prev) => (prev === school ? prev : null));
+    hoverTimer.current = setTimeout(() => setHighlighted(school), 100);
   }, []);
 
   const onLeave = useCallback(() => {
+    clearTimeout(hoverTimer.current);
     setHighlighted(null);
   }, []);
 
   const toggleSchool = useCallback((school) => {
+    clearTimeout(hoverTimer.current);
     setSelection((prev) =>
       prev.includes(school) ? prev.filter((s) => s !== school) : [...prev, school],
     );
