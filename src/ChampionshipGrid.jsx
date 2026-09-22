@@ -55,7 +55,7 @@ const SCHOOL_HIGHLIGHT_CSS = (() => {
     // --sel crossfades the white stamp out and the color logo in (inherited
     // by both <img>s of the mark). Shared cells carry both schools, so only
     // the active school's half flips.
-    css += `.cg-active-scope.${c} .cg-cell[data-school="${e}"]:not(.cg-cell--shared),.cg-active-scope.${c} .cg-cell--shared[data-school="${e}"] .cg-half--a,.cg-active-scope.${c} .cg-cell--shared[data-school-2="${e}"] .cg-half--b,.cg-active-scope.${c} .cg-lb-row[data-school="${e}"]{--sel:1;}\n`;
+    css += `.cg-active-scope.${c} .cg-cell[data-school="${e}"]:not(.cg-cell--shared),.cg-active-scope.${c} .cg-cell--shared[data-school="${e}"] .cg-half--a,.cg-active-scope.${c} .cg-cell--shared[data-school-2="${e}"] .cg-half--b{--sel:1;}\n`;
     css += `.cg-active-scope.${c} .cg-lb-row[data-school="${e}"]{color:var(--bright);}\n`;
     css += `.cg-active-scope.${c} .cg-lb-row[data-school="${e}"] .cg-lb-count{color:var(--accent);}\n`;
   }
@@ -180,22 +180,32 @@ export default function ChampionshipGrid() {
   );
 
   // Count titles per school across all sports shown, broken down by the
-  // sport's gender. Shared titles (array values) credit each co-champion
-  // with one title.
+  // sport's gender, plus per-sport and per-year tallies for the sidebar's
+  // summary line and year sparkline. Shared titles (array values) credit
+  // each co-champion with one title.
   const schoolTitles = useMemo(() => {
     const counts = {};
     for (const sport of SPORTS) {
       const data = CHAMPIONSHIPS[sport.key] || {};
       const gender = sport.gender;
-      for (const value of Object.values(data)) {
+      for (const [year, value] of Object.entries(data)) {
         if (!value) continue;
         const schools = Array.isArray(value) ? value : [value];
         for (const school of schools) {
           const entry =
-            counts[school] || (counts[school] = { total: 0, male: 0, female: 0 });
+            counts[school] ||
+            (counts[school] = {
+              total: 0,
+              male: 0,
+              female: 0,
+              sports: {},
+              years: {},
+            });
           entry.total += 1;
           if (gender === '♂') entry.male += 1;
           else if (gender === '♀') entry.female += 1;
+          entry.sports[sport.name] = (entry.sports[sport.name] || 0) + 1;
+          entry.years[year] = (entry.years[year] || 0) + 1;
         }
       }
     }
@@ -312,11 +322,27 @@ export default function ChampionshipGrid() {
   }, [activeSchools]);
 
   // Leaderboard rows: every school with at least one title, most titles
-  // first, ties alphabetical.
+  // first, ties alphabetical. Each row carries the summary-line stats and
+  // a tooltip listing the school's top sports.
   const leaderboard = useMemo(
     () =>
       Object.entries(schoolTitles)
-        .map(([school, t]) => ({ school, total: t.total }))
+        .map(([school, t]) => {
+          const topSports = Object.entries(t.sports)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name, n]) => `${name} ${n}`)
+            .join(', ');
+          return {
+            school,
+            total: t.total,
+            male: t.male,
+            female: t.female,
+            nSports: Object.keys(t.sports).length,
+            years: t.years,
+            tooltip: `${school} — ${topSports}`,
+          };
+        })
         .sort((a, b) => b.total - a.total || a.school.localeCompare(b.school)),
     [schoolTitles],
   );
@@ -515,30 +541,90 @@ const GridContent = memo(function GridContent({
   );
 });
 
+// Tiny per-school timeline: one tick per year with a title, tick height by
+// how many titles that year. Stretched via preserveAspectRatio so the
+// full YEARS span always fills the strip; fill follows the row's text
+// color so it brightens with the row.
+const YEARS_ASC = [...YEARS].sort((a, b) => a - b);
+function YearSpark({ years }) {
+  return (
+    <svg
+      className="cg-lb-spark"
+      viewBox={`0 0 ${YEARS_ASC.length} 8`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      {YEARS_ASC.map((y, i) => {
+        const c = years[y];
+        if (!c) return null;
+        const h = c === 1 ? 3 : c === 2 ? 5.5 : 8;
+        return <rect key={y} x={i + 0.1} y={8 - h} width={0.8} height={h} />;
+      })}
+    </svg>
+  );
+}
+
 // Ranked list of schools by total titles. Rows share the grid's hover/select
 // mechanics: hovering previews the school in color on the board, clicking
-// toggles it into the selection. Visual active state comes entirely from
+// toggles it into the selection. Logos stay in full color here — the row is
+// a legend entry, not a board mark. Active-row text/count styling comes from
 // SCHOOL_HIGHLIGHT_CSS via data-school, so the memo never breaks on hover.
 const Leaderboard = memo(function Leaderboard({ rows, onEnter, onLeave, onToggle }) {
   return (
     <aside className="cg-lb" onClick={(e) => e.stopPropagation()}>
       <div className="cg-lb-title">Most titles</div>
       <div className="cg-lb-list">
-        {rows.map(({ school, total }) => (
-          <button
-            type="button"
-            key={school}
-            className="cg-lb-row"
-            data-school={school}
-            onMouseEnter={() => onEnter(school)}
-            onMouseLeave={onLeave}
-            onClick={() => onToggle(school)}
-          >
-            <SchoolMark school={school} />
-            <span className="cg-lb-name">{school}</span>
-            <span className="cg-lb-count">{total}</span>
-          </button>
-        ))}
+        {rows.map(({ school, total, male, female, nSports, years, tooltip }) => {
+          const info = SCHOOLS[school];
+          const logo = getLogoUrl(school);
+          return (
+            <button
+              type="button"
+              key={school}
+              className="cg-lb-row"
+              data-school={school}
+              title={tooltip}
+              onMouseEnter={() => onEnter(school)}
+              onMouseLeave={onLeave}
+              onClick={() => onToggle(school)}
+            >
+              {logo ? (
+                <img
+                  src={logo}
+                  alt=""
+                  loading="lazy"
+                  className={
+                    'cg-lb-logo' + (info?.invertLogo ? ' cg-logo--invert' : '')
+                  }
+                />
+              ) : (
+                <span
+                  className="cg-lb-logo cg-lb-logo--text"
+                  style={{ background: info?.color || '#555' }}
+                >
+                  {info?.abbr || school.slice(0, 3)}
+                </span>
+              )}
+              <span className="cg-lb-main">
+                <span className="cg-lb-top">
+                  <span className="cg-lb-name">{school}</span>
+                  <span className="cg-lb-count">{total}</span>
+                </span>
+                <span className="cg-lb-sub">
+                  <span
+                    className="cg-lb-bd"
+                    aria-label={`Men's: ${male}, Women's: ${female}, across ${nSports} sports`}
+                  >
+                    ♂{male}
+                    {' '}♀{female} · {nSports}{' '}
+                    {nSports === 1 ? 'sport' : 'sports'}
+                  </span>
+                  <YearSpark years={years} />
+                </span>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </aside>
   );
@@ -1007,7 +1093,7 @@ body {
 
 /* Leaderboard sidebar */
 .cg-lb {
-  width: 216px;
+  width: 236px;
   flex-shrink: 0;
   position: sticky;
   top: 16px;
@@ -1038,7 +1124,7 @@ body {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 3px 8px;
+  padding: 4px 8px;
   background: none;
   border: none;
   border-radius: 5px;
@@ -1052,18 +1138,36 @@ body {
   background: rgba(255,255,255,0.05);
   color: var(--bright);
 }
-.cg-lb-row .cg-mark,
-.cg-lb-row .cg-fallback {
-  width: 16px;
-  height: 16px;
+.cg-lb-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
   flex-shrink: 0;
+  filter: var(--fx-base);
 }
-.cg-lb-row .cg-fallback {
+.cg-lb-logo--text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 3px;
   font-size: 7px;
+  font-weight: 700;
+  color: #fff;
+}
+.cg-lb-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cg-lb-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 .cg-lb-name {
-  flex: 1;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -1073,6 +1177,27 @@ body {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 500;
   font-size: 12px;
+}
+.cg-lb-sub {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+}
+.cg-lb-bd {
+  white-space: nowrap;
+}
+.cg-lb-spark {
+  width: 56px;
+  height: 9px;
+  flex-shrink: 0;
+  fill: currentColor;
+  opacity: 0.75;
 }
 
 /* Scrollable grid wrapper */
