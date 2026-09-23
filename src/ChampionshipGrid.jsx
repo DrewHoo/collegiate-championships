@@ -456,6 +456,22 @@ export default function ChampionshipGrid() {
         relevance &mdash; or is the gender counterpart of a sport that does.
       </p>
 
+      <div className="cg-readnext">
+        <h2>What to read next</h2>
+        <p>
+          <a href="https://drewhoover.com/how-many-rings/">How Many Rings?</a> — every person on a
+          football national-championship staff since 1990, ranked by rings, each one cited.
+        </p>
+        <p>
+          <a href="https://drewhoover.com/hostile-territory/">Hostile Territory</a> — every head
+          coach&rsquo;s true road record against AP top-10 teams since 1990, one chip per game.
+        </p>
+        <p>
+          <a href="https://drewhoover.com/cfb-all-time-records/football">All-time FBS records</a> — all
+          136 programs ranked by total wins, win percentage and bowl record.
+        </p>
+      </div>
+
       <footer className="cg-footer">
         <p>
           Football uses AP poll champion (pre-BCS era) and BCS/CFP champion.
@@ -1513,6 +1529,34 @@ body {
   color: var(--muted);
   line-height: 1.5;
 }
+
+/* What to read next */
+.cg-readnext {
+  margin-top: 34px;
+  max-width: 640px;
+  text-align: center;
+}
+.cg-readnext h2 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bright);
+  margin: 0 0 6px;
+}
+.cg-readnext p {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 4px 0;
+}
+.cg-readnext a {
+  color: var(--bright);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.cg-readnext a:hover { color: var(--accent); }
 
 /* Footer */
 .cg-footer {
