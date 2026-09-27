@@ -459,6 +459,10 @@ export default function ChampionshipGrid() {
       <div className="cg-readnext">
         <h2>What to read next</h2>
         <p>
+          <a href="https://drewhoover.com/cfb-streak-king/">Streak King</a> — design a streak from
+          up to four constraints; every FBS team ranked by its longest active run.
+        </p>
+        <p>
           <a href="https://drewhoover.com/how-many-rings/">How Many Rings?</a> — every person on a
           football national-championship staff since 1990, ranked by rings, each one cited.
         </p>
