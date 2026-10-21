@@ -62,4 +62,4 @@ npm run gen:og
 
 ## Deployment
 
-Pushes to `main` trigger `.github/workflows/deploy.yml`, which runs `npm run build` and publishes `./dist` to GitHub Pages. The Vite `base` is set to `/collegiate-championships/` in `vite.config.js` — if you fork this, update that to match your repo name.
+Pushes to `main` trigger `.github/workflows/deploy.yml`, which runs `npm run build` (`vite build`, then `scripts/prerender.mjs`, which renders the grid into `dist/index.html` so crawlers get the page's text rather than an empty root, and writes `dist/sitemap.xml`) and publishes `./dist` to GitHub Pages. The Vite `base` is set to `/collegiate-championships/` in `vite.config.js` — if you fork this, update that to match your repo name.

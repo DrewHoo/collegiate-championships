@@ -8,14 +8,12 @@ import {
   getMonoLogoUrl,
 } from './championshipData';
 
-// Sport header icons (Fluent Emoji High Contrast, MIT — see src/icons/).
-// Applied as CSS masks so they wear the theme's ink color.
-const SPORT_ICONS = import.meta.glob('./icons/*.svg', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
-const sportIconUrl = (name) => SPORT_ICONS[`./icons/${name}.svg`];
+// Sport header icons (Fluent Emoji High Contrast, MIT — see public/icons/).
+// Applied as CSS masks so they wear the theme's ink color. They live in
+// public/ rather than src/ so the path is the same string in the prerender
+// (which loads the app through Vite's dev server) and in the built bundle;
+// a hashed asset import would differ between the two and break hydration.
+const sportIconUrl = (name) => `${import.meta.env.BASE_URL}icons/${name}.svg`;
 
 // Default cell size (overridden on mobile via a CSS min() + viewport calc).
 const CELL = 32;
@@ -118,10 +116,11 @@ function SchoolMark({ school, onError }) {
   );
 }
 
-// Read ?s=... (repeatable) on first render so shared links land on the
-// right selection. Legacy ?a=/?b=/?school= are still honored for older links.
-const initialSelectionFromUrl = () => {
-  if (typeof window === 'undefined') return [];
+// Read ?s=... (repeatable) after mount so shared links land on the right
+// selection. Legacy ?a=/?b=/?school= are still honored for older links.
+// Not read during render: the page is prerendered at build and hydrated,
+// so the first render must not depend on the URL.
+const selectionFromUrl = () => {
   const params = new URLSearchParams(window.location.search);
   const raw = [
     ...params.getAll('s'),
@@ -142,14 +141,24 @@ const initialSelectionFromUrl = () => {
 
 export default function ChampionshipGrid() {
   const [highlighted, setHighlighted] = useState(null);
-  const [selection, setSelection] = useState(initialSelectionFromUrl);
+  const [selection, setSelection] = useState([]);
   const [copied, setCopied] = useState(false);
   const scopeRef = useRef(null);
   const tipRef = useRef(null);
 
-  // Keep ?s= in sync with the selection and drop legacy params.
+  // Apply the URL's selection once, right after hydration.
+  const urlApplied = useRef(false);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const fromUrl = selectionFromUrl();
+    if (fromUrl.length) setSelection(fromUrl);
+    urlApplied.current = true;
+  }, []);
+
+  // Keep ?s= in sync with the selection and drop legacy params. Skipped until
+  // the URL has been read, so the first render's empty selection can't wipe
+  // the ?s= a shared link arrived with.
+  useEffect(() => {
+    if (!urlApplied.current) return;
     const url = new URL(window.location.href);
     url.searchParams.delete('school');
     url.searchParams.delete('a');
@@ -392,8 +401,12 @@ export default function ChampionshipGrid() {
 
   return (
     <div className="cg-page" onClick={clearSelection}>
-      <style>{STYLES}</style>
-      <style>{SCHOOL_HIGHLIGHT_CSS}</style>
+      {/* dangerouslySetInnerHTML, not a text child: React 18's server renderer
+          HTML-escapes text inside <style>, which the browser doesn't decode
+          there, so the prerendered CSS would carry &quot; and &#x27; and
+          hydration would report a text mismatch. */}
+      <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+      <style dangerouslySetInnerHTML={{ __html: SCHOOL_HIGHLIGHT_CSS }} />
       <div className="cg-tip" ref={tipRef} aria-hidden="true" />
 
       {/* Header */}
@@ -468,7 +481,17 @@ export default function ChampionshipGrid() {
         </p>
         <p>
           <a href="https://drewhoover.com/hostile-territory/">Hostile Territory</a> — every head
-          coach&rsquo;s true road record against AP top-10 teams since 1990, one chip per game.
+          coach&rsquo;s true road record against AP top-10 teams since 1936, one chip per game.
+        </p>
+        <p>
+          <a href="https://drewhoover.com/nfl-comparator/">NFL Comparator</a> — compare NFL
+          players at the same point in their careers: who, which stat, through how many games or
+          starts, since 1999.
+        </p>
+        <p>
+          <a href="https://drewhoover.com/wnba-comparator/">WNBA Comparator</a> — the same
+          comparison for WNBA players: points, assists, 30-point games, through the first N games
+          of a career.
         </p>
         <p>
           <a href="https://drewhoover.com/cfb-all-time-records/football">All-time FBS records</a> — all
@@ -490,7 +513,19 @@ export default function ChampionshipGrid() {
           gymnastics, ice hockey, and wrestling are National Collegiate
           titles, decided across all divisions.
           Year 2020 dashes indicate seasons canceled due to COVID-19.
-          Data sourced from NCAA records.
+          Data from each sport&rsquo;s championship page on{' '}
+          <a href="https://en.wikipedia.org/wiki/NCAA_Division_I">Wikipedia</a> (
+          <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>).
+        </p>
+        <p>
+          <a href="https://drewhoover.com/">drewhoover.com</a> ·{' '}
+          <a href="https://github.com/DrewHoo/collegiate-championships">source</a> ·{' '}
+          <a
+            href="https://ko-fi.com/drewhooverdotcom"
+            onClick={() => window.dhAnalytics?.track('kofi', { from: 'footer' })}
+          >
+            buy me a coffee
+          </a>
         </p>
       </footer>
     </div>
