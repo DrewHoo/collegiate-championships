@@ -39,6 +39,8 @@ const STAMP_GREY = { r: 0xb2, g: 0xaa, b: 0xad };
 
 const TITLE_FONT = "Oswald, 'Barlow Condensed', 'Arial Narrow', Helvetica, Arial, sans-serif";
 const BODY_FONT = "Barlow, Helvetica, Arial, sans-serif";
+// The title face every sports site shares: Georgia Bold, as on Hostile Territory's poster.
+const SERIF_TITLE = "Georgia, 'Times New Roman', serif";
 
 // --- Mini-board geometry -----------------------------------------------------
 const CARD = { x: 596, y: 70, w: 544, h: 490 };
@@ -80,8 +82,8 @@ const frame = `
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${BG}"/>
   <text x="64" y="140" font-family="${TITLE_FONT}" font-size="27" fill="${MUTED}" font-weight="500" letter-spacing="3">NCAA DIVISION I</text>
-  <text x="62" y="212" font-family="${TITLE_FONT}" font-size="62" fill="${BRIGHT}" font-weight="600" letter-spacing="1">EVERY CHAMPION</text>
-  <text x="62" y="278" font-family="${TITLE_FONT}" font-size="62" fill="${BRIGHT}" font-weight="600" letter-spacing="1">SINCE 1972</text>
+  <text x="62" y="212" font-family="${SERIF_TITLE}" font-size="62" fill="${BRIGHT}" font-weight="700">Every Champion</text>
+  <text x="62" y="278" font-family="${SERIF_TITLE}" font-size="62" fill="${BRIGHT}" font-weight="700">Since 1972</text>
   <text x="64" y="336" font-family="${TITLE_FONT}" font-size="27" fill="${ACCENT}" font-weight="500" letter-spacing="1">33 SPORTS · ONE GRID</text>
   <text x="64" y="392" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">Every NCAA D-I national champion, laid</text>
   <text x="64" y="419" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">out as a board of team logos. Pick a</text>

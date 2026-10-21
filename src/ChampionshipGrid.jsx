@@ -903,7 +903,7 @@ function ComparePicker({ selection, onChange, schools, titleCounts }) {
 }
 
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -964,11 +964,10 @@ body {
   border-color: rgba(255,255,255,0.25);
 }
 .cg-header h1 {
-  font-family: 'Oswald', sans-serif;
+  font-family: Georgia, 'Source Serif 4', 'Times New Roman', serif;
   font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--bright);
   margin-top: 6px;
 }
