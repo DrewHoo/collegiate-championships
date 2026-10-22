@@ -1,6 +1,6 @@
 # Collegiate Championships
 
-**Who has the most collegiate sports championships?** — every NCAA Division I national champion in 30 sports from 1972 to present, laid out as a hoverable grid of team logos. Hover, tap, or pick schools to highlight every other championship a school has won across all sports and years.
+**Who has the most collegiate sports championships?** — every NCAA Division I national champion in 33 sports from 1972 to present, laid out as a hoverable grid of team logos. Hover, tap, or pick schools to highlight every other championship a school has won across all sports and years.
 
 **Live site:** https://drewhoover.com/collegiate-championships/
 
