@@ -9,7 +9,7 @@ import {
 } from './championshipData';
 import { SchoolPicker } from './components/SchoolPicker.jsx';
 import { useIsMobile } from './hooks/useIsMobile.js';
-import { shareTitle as shareWords } from './lib/share.js';
+import { SITE, shareTitle as shareWords, shareText } from './lib/share.js';
 import { SIBLINGS } from './lib/siblings.js';
 
 const SITE_TITLE = 'Who has the most collegiate sports championships?';
@@ -20,6 +20,14 @@ const SITE_TITLE = 'Who has the most collegiate sports championships?';
 // (which loads the app through Vite's dev server) and in the built bundle;
 // a hashed asset import would differ between the two and break hydration.
 const sportIconUrl = (name) => `${import.meta.env.BASE_URL}icons/${name}.svg`;
+
+// The icon bar's glyphs (College Football Streak King's Icons.jsx).
+const ShareIcon = () => (
+  <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12.5" cy="3" r="2" /><circle cx="3.5" cy="8" r="2" /><circle cx="12.5" cy="13" r="2" />
+    <path d="M5.3 7l5.4-3M5.3 9l5.4 3" />
+  </svg>
+);
 
 // Default cell size (overridden on mobile via a CSS min() + viewport calc).
 const CELL = 32;
@@ -300,42 +308,26 @@ export default function ChampionshipGrid() {
     if (fallback) fallback.style.display = 'flex';
   }, []);
 
-  const shareTitle = useMemo(() => {
-    if (selection.length === 0) {
-      return 'Every NCAA D-I national champion since 1972, in one grid';
-    }
-    if (selection.length === 1) {
-      return `Every NCAA D-I national title ${selection[0]} has won since 1972`;
-    }
-    if (selection.length === 2) {
-      return `${selection[0]} vs ${selection[1]} — NCAA D-I championships since 1972`;
-    }
-    const head = selection.slice(0, -1).join(', ');
-    const tail = selection[selection.length - 1];
-    return `${head} vs ${tail} — NCAA D-I championships since 1972`;
-  }, [selection]);
-
-  const copyLink = useCallback(async (e) => {
-    e.stopPropagation();
+  // The share: the native sheet where there is one, else copy "text url" and
+  // flash copied (Streak King's useShare). The text is the page's sentence
+  // for the picks, the same words the share worker writes into a link's head.
+  const share = useCallback(() => {
+    const text = shareText({ s: selection });
+    const url = window.location.href;
+    window.dhAnalytics?.track('share', { from: 'icons', s: selection.join(',') || null });
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      if (navigator.share) {
+        navigator.share({ title: SITE, text, url }).catch(() => {});
+        return;
+      }
+      navigator.clipboard.writeText(`${text} ${url}`).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      }).catch(() => {});
     } catch {
-      // Clipboard API can fail on http: or inside some iframes — silently ignore.
+      // Clipboard API can fail on http: or inside some iframes; nothing to show.
     }
-  }, []);
-
-  const shareToReddit = useCallback((e) => {
-    e.stopPropagation();
-    const url = encodeURIComponent(window.location.href);
-    const title = encodeURIComponent(shareTitle);
-    window.open(
-      `https://www.reddit.com/submit?url=${url}&title=${title}`,
-      '_blank',
-      'noopener,noreferrer',
-    );
-  }, [shareTitle]);
+  }, [selection]);
 
   // Apply highlighting classes directly to the wrapper around the grid and
   // sidebar so hover state never re-renders the memoized GridContent or
@@ -466,18 +458,10 @@ export default function ChampionshipGrid() {
         </SchoolPicker>
       </p>
 
-      {/* Share row */}
-      <div className="cg-share" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="cg-share-btn" onClick={copyLink}>
-          {copied
-            ? 'Link copied'
-            : selection.length > 0
-            ? 'Copy link to this view'
-            : 'Copy link'}
-        </button>
-        <button type="button" className="cg-share-btn" onClick={shareToReddit}>
-          Share on Reddit
-        </button>
+      {/* The icon bar: share. stopPropagation so a click doesn't clear the picks. */}
+      <div className="cg-icons" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="ico" onClick={share} aria-label="Share"><ShareIcon /></button>
+        {copied && <span className="toast">copied</span>}
       </div>
 
       {/* Grid + leaderboard — both memoized so hover state changes never
@@ -954,29 +938,35 @@ body {
 .sheet-body .mi { padding: 10px 18px; font-size: 14px; }
 .sheet .tp-top { padding: 4px 14px 8px; }
 
-/* Share row */
-.cg-share {
-  display: flex;
-  gap: 8px;
+/* The icon bar under the sentence, and the copied toast beneath it */
+.cg-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
   margin-bottom: 14px;
 }
-.cg-share-btn {
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--muted);
-  background: var(--surface);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  padding: 6px 12px;
+.ico {
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  padding: 6px;
+  color: var(--muted);
+  display: inline-flex;
+  border-radius: 4px;
+  transition: color 0.15s;
 }
-.cg-share-btn:hover {
+.ico:hover { color: var(--bright); }
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
   color: var(--bright);
-  border-color: rgba(255,255,255,0.25);
-  background: rgba(255,255,255,0.04);
+  white-space: nowrap;
 }
 
 /* Grid + leaderboard layout */
