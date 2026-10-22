@@ -211,6 +211,7 @@ export default function ChampionshipGrid() {
     () => `${Math.min(...YEARS)}–${Math.max(...YEARS)}`,
     [],
   );
+  const FIRST = Math.min(...YEARS);
 
   // Count titles per school across all sports shown, broken down by the
   // sport's gender, plus per-sport and per-year tallies for the sidebar's
@@ -491,13 +492,6 @@ export default function ChampionshipGrid() {
         />
       </div>
 
-      <p className="cg-method">
-        Why these {SPORTS.length} sports? Each clears at least two of three
-        lenses &mdash; sponsorship (how many Division&nbsp;I schools field a
-        team), popularity (attendance and viewership), and Olympic
-        relevance &mdash; or is the gender counterpart of a sport that does.
-      </p>
-
       <div className="cg-readnext">
         <h2>What to read next</h2>
         {SIBLINGS.map((s) => (
@@ -518,20 +512,85 @@ export default function ChampionshipGrid() {
         </p>
       </div>
 
+      <section id="method" className="cg-method" aria-label="Method">
+        <h2>Method</h2>
+        <p>
+          The grid is every NCAA Division I national champion from {yearRange}, one column per sport, one
+          row per year, {SPORTS.length} sports. Why these {SPORTS.length}? Each clears at least two of three
+          lenses: sponsorship (how many Division&nbsp;I schools field a team), popularity (attendance and
+          viewership), and Olympic relevance; or it is the gender counterpart of a sport that does. The
+          champions come from each sport&rsquo;s championship page on{' '}
+          <a href="https://en.wikipedia.org/wiki/NCAA_Division_I">Wikipedia</a> (
+          <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>). The sections below
+          say where the data comes from, what counts as a championship, what the words mean, and why a
+          school&rsquo;s own count can differ.
+        </p>
+
+        <details>
+          <summary>Where the data comes from</summary>
+          <p>
+            Each sport&rsquo;s championship page on Wikipedia carries a table of champions by year; a script
+            in the repository reads those tables and writes the data the grid draws. Where a page also lists
+            a championship that is not the NCAA&rsquo;s (softball&rsquo;s AIAW era, 1969&ndash;82), only the
+            NCAA table is read. Football&rsquo;s page lists one row per year per selector; the script keeps
+            one champion per year, preferring the CFP, then the BCS, then the AP poll, then the coaches,
+            and keeps both schools for the seasons those selectors split. The refresh is by hand: the script
+            runs again when a season&rsquo;s champions are final, the diff is read, and the data is committed.
+          </p>
+        </details>
+
+        <details>
+          <summary>What counts as a championship</summary>
+          <p>
+            A cell is the NCAA Division I national champion in that sport that year. Football uses the AP
+            poll champion before the BCS and the BCS or CFP champion since; the seasons the selectors split
+            (1973, 1974, 1978, 1990, 1991, 1997 and 2003) show both schools. Before the 1973 split into
+            divisions, the football and basketball champions are University Division champions. Men&rsquo;s
+            volleyball and gymnastics, both water polos, and women&rsquo;s gymnastics, ice hockey and
+            wrestling are National Collegiate titles, decided across all divisions. A shared title (two
+            marks in one cell) credits each co-champion with one. A dash in 2020 is a season canceled for
+            COVID-19.
+          </p>
+          <p>
+            A column begins when the NCAA first sponsored the championship. The women&rsquo;s columns begin
+            in 1981&ndash;82 (rowing 1997, ice hockey and water polo 2001, wrestling 2026). There is no
+            men&rsquo;s rowing column because the NCAA has never sponsored one: the IRA has run that national
+            championship since 1895, older than the NCAA itself. Women&rsquo;s bowling, fencing, rifle and
+            skiing are absent because each clears one lens at most, and the last three are coed
+            championships that don&rsquo;t fit the grid&rsquo;s men&rsquo;s and women&rsquo;s columns.
+          </p>
+        </details>
+
+        <details>
+          <summary>What the words mean</summary>
+          <p>
+            A school&rsquo;s <b>titles</b> are its cells on the grid: the championships it has won across the{' '}
+            {SPORTS.length} sports since {FIRST}. The <b>men&rsquo;s</b> and <b>women&rsquo;s</b> split
+            follows the sport&rsquo;s column. <b>Most titles</b> ranks every school with at least one, most
+            first, ties alphabetical; the rank in a school&rsquo;s share text (&ldquo;tied 3rd of 134
+            schools&rdquo;) is a competition rank. A school&rsquo;s share text names the sports it has won
+            most in. Pick a school and its marks go to
+            color while the rest of the board recedes; the address carries the picks (?s=School, repeatable),
+            so a link opens the same view.
+          </p>
+        </details>
+
+        <details>
+          <summary>Where a published number differs, and why</summary>
+          <p>
+            A school&rsquo;s own count of national championships usually runs higher than its count here, for
+            four reasons. The grid begins in {FIRST}, so titles before that are out. The grid has{' '}
+            {SPORTS.length} sports, so titles in fencing, rifle, skiing, bowling and the sports the NCAA
+            doesn&rsquo;t sponsor are out. Only NCAA titles count, so AIAW championships, IRA rowing and
+            football titles from any selector the grid doesn&rsquo;t use are out. And a shared football
+            title counts once for each school here, where a school&rsquo;s own books may claim it alone.
+            Where Wikipedia&rsquo;s table and a school&rsquo;s page disagree, the grid shows Wikipedia&rsquo;s.
+          </p>
+        </details>
+      </section>
+
       <footer className="cg-footer">
         <p>
-          Football uses AP poll champion (pre-BCS era) and BCS/CFP champion.
-          Before the 1973 split into divisions, football and basketball
-          champions are University Division champions. Women's columns begin
-          when the NCAA first sponsored those championships, in 1981–82
-          (rowing 1997, ice hockey and water polo 2001, wrestling 2026).
-          There is no men's rowing column because the NCAA has never
-          sponsored one: the IRA has run that national championship since
-          1895, older than the NCAA itself.
-          Men's volleyball and gymnastics, both water polos, and women's
-          gymnastics, ice hockey, and wrestling are National Collegiate
-          titles, decided across all divisions.
-          Year 2020 dashes indicate seasons canceled due to COVID-19.
           Data from each sport&rsquo;s championship page on{' '}
           <a href="https://en.wikipedia.org/wiki/NCAA_Division_I">Wikipedia</a> (
           <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>).
@@ -1342,16 +1401,60 @@ body {
   font-weight: 300;
 }
 
-/* Methodology callout */
+/* Method: an open intro, then sections that fold; a summary reads as a small heading */
 .cg-method {
-  margin-top: 16px;
+  margin-top: 28px;
   max-width: 640px;
-  text-align: center;
-  font-size: 12px;
-  font-style: italic;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.55;
 }
+.cg-method h2 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bright);
+  text-align: center;
+  margin: 0 0 8px;
+}
+.cg-method p { margin: 8px 0; }
+.cg-method b { color: var(--text); font-weight: 600; }
+.cg-method a {
+  color: var(--text);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.cg-method a:hover { color: var(--bright); }
+.cg-method details { margin: 10px 0; }
+.cg-method summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cg-method summary::-webkit-details-marker { display: none; }
+.cg-method summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid var(--muted);
+  border-bottom: 1px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+  flex: none;
+}
+.cg-method details[open] > summary::before { transform: rotate(45deg); }
+.cg-method summary:hover { color: var(--bright); }
+.cg-method details[open] > summary { margin-bottom: 4px; }
+.cg-method details > p { margin: 8px 0 8px 14px; }
 
 /* What to read next */
 .cg-readnext {
@@ -1461,5 +1564,7 @@ body {
     font-size: 9px;
     padding-right: 3px;
   }
+  /* the page's gutter is 4px for the grid's sake; the prose keeps a margin */
+  .cg-readnext, .cg-notes, .cg-method, .cg-footer { padding: 0 12px; }
 }
 `;
