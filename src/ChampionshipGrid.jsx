@@ -13,6 +13,8 @@ import { SITE, shareTitle as shareWords, shareText } from './lib/share.js';
 import { SIBLINGS } from './lib/siblings.js';
 
 const SITE_TITLE = 'Who has the most collegiate sports championships?';
+const KOFI_URL = 'https://ko-fi.com/drewhooverdotcom';
+const kofi = (from) => window.dhAnalytics?.track('kofi', { from });
 
 // Sport header icons (Fluent Emoji High Contrast, MIT — see public/icons/).
 // Applied as CSS masks so they wear the theme's ink color. They live in
@@ -27,6 +29,9 @@ const ShareIcon = () => (
     <circle cx="12.5" cy="3" r="2" /><circle cx="3.5" cy="8" r="2" /><circle cx="12.5" cy="13" r="2" />
     <path d="M5.3 7l5.4-3M5.3 9l5.4 3" />
   </svg>
+);
+const CoffeeIcon = () => (
+  <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5h9v3.5a3.5 3.5 0 0 1-3.5 3.5H6a3.5 3.5 0 0 1-3.5-3.5V6.5zM11.5 7.5h1a1.75 1.75 0 0 1 0 3.5h-1.2M5.5 1.8v2.4M8.5 1.8v2.4" /></svg>
 );
 
 // Default cell size (overridden on mobile via a CSS min() + viewport calc).
@@ -458,8 +463,9 @@ export default function ChampionshipGrid() {
         </SchoolPicker>
       </p>
 
-      {/* The icon bar: share. stopPropagation so a click doesn't clear the picks. */}
+      {/* The icon bar: Ko-fi and share. stopPropagation so a click doesn't clear the picks. */}
       <div className="cg-icons" onClick={(e) => e.stopPropagation()}>
+        <a className="ico" href={KOFI_URL} onClick={() => kofi('icons')} aria-label="Buy me a coffee"><CoffeeIcon /></a>
         <button type="button" className="ico" onClick={share} aria-label="Share"><ShareIcon /></button>
         {copied && <span className="toast">copied</span>}
       </div>
@@ -501,6 +507,17 @@ export default function ChampionshipGrid() {
         ))}
       </div>
 
+      <div className="cg-notes">
+        <p>
+          If a count from this page ends up in your article, broadcast, podcast or thread, please cite it:
+          name the site and link to the page; the url encodes the schools.
+        </p>
+        <p>
+          The site is free and serves no ads. If you enjoyed using it, consider{' '}
+          <a href={KOFI_URL} onClick={() => kofi('notes')}>buying me some server compute</a>.
+        </p>
+      </div>
+
       <footer className="cg-footer">
         <p>
           Football uses AP poll champion (pre-BCS era) and BCS/CFP champion.
@@ -522,12 +539,7 @@ export default function ChampionshipGrid() {
         <p>
           <a href="https://drewhoover.com/">drewhoover.com</a> ·{' '}
           <a href="https://github.com/DrewHoo/collegiate-championships">source</a> ·{' '}
-          <a
-            href="https://ko-fi.com/drewhooverdotcom"
-            onClick={() => window.dhAnalytics?.track('kofi', { from: 'footer' })}
-          >
-            buy me a coffee
-          </a>
+          <a href={KOFI_URL} onClick={() => kofi('footer')}>buy me a coffee</a>
         </p>
       </footer>
     </div>
@@ -1368,6 +1380,25 @@ body {
   text-underline-offset: 3px;
 }
 .cg-readnext a:hover { color: var(--accent); }
+
+/* The notes: the citing ask and the Ko-fi line */
+.cg-notes {
+  margin-top: 20px;
+  max-width: 600px;
+  text-align: center;
+}
+.cg-notes p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.cg-notes p + p { margin-top: 6px; }
+.cg-notes a {
+  color: var(--text);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.cg-notes a:hover { color: var(--bright); }
 
 /* Footer */
 .cg-footer {
