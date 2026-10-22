@@ -10,6 +10,7 @@ import {
 import { SchoolPicker } from './components/SchoolPicker.jsx';
 import { useIsMobile } from './hooks/useIsMobile.js';
 import { shareTitle as shareWords } from './lib/share.js';
+import { SIBLINGS } from './lib/siblings.js';
 
 const SITE_TITLE = 'Who has the most collegiate sports championships?';
 
@@ -509,32 +510,11 @@ export default function ChampionshipGrid() {
 
       <div className="cg-readnext">
         <h2>What to read next</h2>
-        <p>
-          <a href="https://drewhoover.com/cfb-streak-king/">Streak King</a> — design a streak from
-          up to four constraints; every FBS team ranked by its longest active run.
-        </p>
-        <p>
-          <a href="https://drewhoover.com/how-many-rings/">How Many Rings?</a> — every person on a
-          football national-championship staff since 1990, ranked by rings, each one cited.
-        </p>
-        <p>
-          <a href="https://drewhoover.com/hostile-territory/">Hostile Territory</a> — every head
-          coach&rsquo;s true road record against AP top-10 teams since 1936, one chip per game.
-        </p>
-        <p>
-          <a href="https://drewhoover.com/nfl-comparator/">NFL Comparator</a> — compare NFL
-          players at the same point in their careers: who, which stat, through how many games or
-          starts, since 1999.
-        </p>
-        <p>
-          <a href="https://drewhoover.com/wnba-comparator/">WNBA Comparator</a> — the same
-          comparison for WNBA players: points, assists, 30-point games, through the first N games
-          of a career.
-        </p>
-        <p>
-          <a href="https://drewhoover.com/cfb-all-time-records/football">All-time FBS records</a> — all
-          136 programs ranked by total wins, win percentage and bowl record.
-        </p>
+        {SIBLINGS.map((s) => (
+          <p key={s.url}>
+            <a href={s.url}>{s.name}</a> — {s.words}
+          </p>
+        ))}
       </div>
 
       <footer className="cg-footer">

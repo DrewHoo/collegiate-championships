@@ -12,6 +12,7 @@ import React from 'react'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { llmsText } from './lib/llms.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const ORIGIN = 'https://drewhoover.com'
@@ -25,6 +26,10 @@ const vite = await createServer({
   logLevel: 'warn',
 })
 const { default: App } = await vite.ssrLoadModule('/src/ChampionshipGrid.jsx')
+// the model and the words, through Vite so the JSON import resolves the way the page's does
+const C = await vite.ssrLoadModule('/src/lib/champs.js')
+const W = await vite.ssrLoadModule('/src/lib/share.js')
+const { SIBLINGS } = await vite.ssrLoadModule('/src/lib/siblings.js')
 const appHtml = renderToString(React.createElement(App))
 await vite.close()
 
@@ -81,6 +86,12 @@ fs.writeFileSync(
   </url>
 </urlset>
 `,
+)
+
+// llms.txt (llmstxt.org): the site in plain markdown for a language model
+fs.writeFileSync(
+  path.join(ROOT, 'dist/llms.txt'),
+  llmsText({ site: SITE, title, description: W.shareDescription({ s: [] }), first: C.FIRST, last: C.LAST, sports: C.SPORTS.length, schools: C.leaderboard.length, siblings: SIBLINGS }),
 )
 
 const words = appHtml.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length
