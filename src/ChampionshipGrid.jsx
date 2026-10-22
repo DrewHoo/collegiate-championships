@@ -7,6 +7,11 @@ import {
   getLogoUrl,
   getMonoLogoUrl,
 } from './championshipData';
+import { SchoolPicker } from './components/SchoolPicker.jsx';
+import { useIsMobile } from './hooks/useIsMobile.js';
+import { shareTitle as shareWords } from './lib/share.js';
+
+const SITE_TITLE = 'Who has the most collegiate sports championships?';
 
 // Sport header icons (Fluent Emoji High Contrast, MIT — see public/icons/).
 // Applied as CSS masks so they wear the theme's ink color. They live in
@@ -166,6 +171,8 @@ export default function ChampionshipGrid() {
     url.searchParams.delete('s');
     for (const s of selection) url.searchParams.append('s', s);
     window.history.replaceState(null, '', url);
+    // the tab reads as the picks do (the share worker words a shared link the same way)
+    document.title = selection.length ? `${shareWords({ s: selection })} · Collegiate Championships` : SITE_TITLE;
   }, [selection]);
 
   const activeSchools = useMemo(() => {
@@ -233,6 +240,16 @@ export default function ChampionshipGrid() {
         .sort((a, b) => a.localeCompare(b)),
     [schoolTitles],
   );
+
+  // the finder's rows: every school with a title, its mark and its count
+  const finderItems = useMemo(
+    () => schoolOptions.map((s) => ({ key: s, name: s, mark: getLogoUrl(s), sub: String(schoolTitles[s]?.total ?? 0) })),
+    [schoolOptions, schoolTitles],
+  );
+  const addSchool = useCallback((school) => {
+    setSelection((prev) => (prev.includes(school) ? prev : [...prev, school]));
+  }, []);
+  const isMobile = useIsMobile();
 
   // Hover intent: a school only highlights after the cursor has rested on
   // its mark for 100ms, so sweeping across the board reads as a calm
@@ -417,15 +434,36 @@ export default function ChampionshipGrid() {
         </p>
       </header>
 
-      {/* Compare picker — Mantine-style combobox */}
-      <div className="cg-picker-wrap" onClick={(e) => e.stopPropagation()}>
-        <ComparePicker
-          selection={selection}
-          onChange={setSelection}
-          schools={schoolOptions}
-          titleCounts={schoolTitles}
-        />
-      </div>
+      {/* The picks, as chips in a sentence, and a dashed + that opens the
+          finder (a dropdown; a bottom sheet on phones). stopPropagation: the
+          finder's menu is a React child of this element even though it's
+          portaled, so a pick must not bubble to the page's clear. */}
+      <p className="cg-sentence" onClick={(e) => e.stopPropagation()}>
+        Pick a school to trace its titles:
+        {selection.map((s) => {
+          const info = SCHOOLS[s];
+          const logo = getLogoUrl(s);
+          const t = schoolTitles[s];
+          return (
+            <span key={s} className="sel">
+              {logo ? (
+                <img src={logo} alt="" className={'sel-mark' + (info?.invertLogo ? ' cg-logo--invert' : '')} />
+              ) : (
+                <span className="sel-mark sel-mark--text" style={{ background: info?.color || '#555' }}>{info?.abbr || s.slice(0, 3)}</span>
+              )}
+              <span className="sel-name">{s}</span>
+              <b className="sel-n">{t?.total ?? 0}</b>
+              {t && (t.male > 0 || t.female > 0) && (
+                <span className="sel-bd" aria-label="Breakdown by sport gender">{t.male}♂ {t.female}♀</span>
+              )}
+              <button type="button" className="sel-x" onClick={() => toggleSchool(s)} aria-label={`Remove ${s}`}>×</button>
+            </span>
+          );
+        })}
+        <SchoolPicker items={finderItems} onPick={addSchool} isMobile={isMobile} placeholder="Find a school" title="School" none="No school with a title matches.">
+          <button type="button" className="addbtn" aria-label="Add a school">+</button>
+        </SchoolPicker>
+      </p>
 
       {/* Share row */}
       <div className="cg-share" onClick={(e) => e.stopPropagation()}>
@@ -740,203 +778,6 @@ const Leaderboard = memo(function Leaderboard({ rows, onEnter, onLeave, onToggle
   );
 });
 
-// Mantine/antd-style multi-select combobox. Typeable search + keyboard
-// nav + click pills to remove.
-function ComparePicker({ selection, onChange, schools, titleCounts }) {
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const inputRef = useRef(null);
-  const rootRef = useRef(null);
-  const listRef = useRef(null);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return schools.filter((s) => {
-      if (selection.includes(s)) return false;
-      if (!q) return true;
-      return s.toLowerCase().includes(q);
-    });
-  }, [schools, selection, query]);
-
-  // Clamp the highlighted option whenever the filtered list shrinks.
-  useEffect(() => {
-    if (activeIdx >= filtered.length) setActiveIdx(0);
-  }, [filtered.length, activeIdx]);
-
-  // Close on outside mousedown so pill × buttons can still fire.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const commit = (school) => {
-    const next = selection.includes(school)
-      ? selection.filter((s) => s !== school)
-      : [...selection, school];
-    onChange(next);
-    setQuery('');
-    setActiveIdx(0);
-    inputRef.current?.focus();
-  };
-
-  const remove = (school, e) => {
-    e.stopPropagation();
-    onChange(selection.filter((s) => s !== school));
-    inputRef.current?.focus();
-  };
-
-  const onKeyDown = (e) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setOpen(true);
-      setActiveIdx((i) => Math.min(i + 1, Math.max(filtered.length - 1, 0)));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter') {
-      if (filtered[activeIdx]) {
-        e.preventDefault();
-        commit(filtered[activeIdx]);
-      }
-    } else if (e.key === 'Backspace' && !query && selection.length > 0) {
-      onChange(selection.slice(0, -1));
-    } else if (e.key === 'Escape') {
-      setOpen(false);
-    }
-  };
-
-  const openAndFocus = () => {
-    setOpen(true);
-    inputRef.current?.focus();
-  };
-
-  return (
-    <div ref={rootRef} className="cg-picker" onClick={openAndFocus}>
-      <div className="cg-picker-control">
-        <span className="cg-picker-label">Compare</span>
-        {selection.map((school) => {
-          const info = SCHOOLS[school];
-          const logo = getLogoUrl(school);
-          return (
-            <span
-              key={school}
-              className="cg-pill"
-              title={school}
-              style={{ borderColor: info?.color || 'rgba(255,255,255,0.2)' }}
-            >
-              {logo ? (
-                <img
-                  src={logo}
-                  alt={school}
-                  className={
-                    'cg-pill-logo' + (info?.invertLogo ? ' cg-logo--invert' : '')
-                  }
-                />
-              ) : (
-                <span
-                  className="cg-pill-logo cg-pill-logo--text"
-                  style={{ background: info?.color || '#555' }}
-                >
-                  {info?.abbr || school.slice(0, 3)}
-                </span>
-              )}
-              <span className="cg-pill-count">
-                {titleCounts[school]?.total || 0}
-              </span>
-              {titleCounts[school] && (
-                <span
-                  className="cg-pill-bd"
-                  aria-label={`Men's: ${titleCounts[school].male}, Women's: ${titleCounts[school].female}`}
-                >
-                  ♂{titleCounts[school].male}
-                  {' '}♀{titleCounts[school].female}
-                </span>
-              )}
-              <button
-                type="button"
-                className="cg-pill-x"
-                aria-label={`Remove ${school}`}
-                onClick={(e) => remove(school, e)}
-              >
-                ×
-              </button>
-            </span>
-          );
-        })}
-        <input
-          ref={inputRef}
-          className="cg-picker-input"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-            setActiveIdx(0);
-          }}
-          onKeyDown={onKeyDown}
-          onFocus={() => setOpen(true)}
-          placeholder={
-            selection.length === 0
-              ? 'Search to compare schools…'
-              : 'Add another school…'
-          }
-        />
-      </div>
-      {open && filtered.length > 0 && (
-        <div ref={listRef} className="cg-picker-menu" role="listbox">
-          {filtered.slice(0, 80).map((school, i) => {
-            const info = SCHOOLS[school];
-            const logo = getLogoUrl(school);
-            const isActive = i === activeIdx;
-            return (
-              <div
-                key={school}
-                role="option"
-                aria-selected={isActive}
-                className={
-                  'cg-picker-option' +
-                  (isActive ? ' cg-picker-option--active' : '')
-                }
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  commit(school);
-                }}
-                onMouseEnter={() => setActiveIdx(i)}
-              >
-                {logo ? (
-                  <img
-                    src={logo}
-                    alt=""
-                    className={
-                      'cg-picker-opt-logo' +
-                      (info?.invertLogo ? ' cg-logo--invert' : '')
-                    }
-                  />
-                ) : (
-                  <div
-                    className="cg-picker-opt-logo cg-picker-opt-logo--text"
-                    style={{ background: info?.color || '#555' }}
-                  >
-                    {info?.abbr || school.slice(0, 3)}
-                  </div>
-                )}
-                <span className="cg-picker-opt-name">{school}</span>
-                <span className="cg-picker-opt-count">
-                  {titleCounts[school]?.total || 0}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,700&display=swap');
 
@@ -1012,160 +853,126 @@ body {
   margin-top: 4px;
 }
 
-/* Compare picker */
-.cg-picker-wrap {
-  width: 100%;
+/* The picks: a sentence of chips, and a dashed + that opens the finder.
+   Dashed means "something can change here". */
+.cg-sentence {
   max-width: 720px;
-  margin-bottom: 10px;
-}
-.cg-picker {
-  position: relative;
-  cursor: text;
-}
-.cg-picker-control {
-  min-height: 44px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  transition: border-color 0.15s;
-}
-.cg-picker:focus-within .cg-picker-control {
-  border-color: rgba(255,255,255,0.22);
-}
-.cg-picker-label {
-  font-family: 'Oswald', sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin: 2px 0 12px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.9;
   color: var(--muted);
-  padding: 0 2px;
 }
-.cg-pill {
+.addbtn {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  width: 28px;
+  height: 28px;
+  border: 1px dashed var(--muted);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Barlow', sans-serif;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.addbtn:hover, .addbtn[data-state='open'] { color: var(--bright); border-color: var(--bright); }
+.sel {
   display: inline-flex;
+  vertical-align: middle;
   align-items: center;
   gap: 6px;
-  padding: 3px 4px 3px 4px;
+  margin: 2px 2px 2px 6px;
+  padding: 3px 4px 3px 8px;
   background: rgba(255,255,255,0.06);
-  border: 1px solid;
-  border-radius: 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--bright);
-  max-width: 220px;
-}
-.cg-pill-logo {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  flex-shrink: 0;
-  filter: var(--fx-base);
-}
-.cg-pill-logo--text {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  font-size: 8px;
-  color: #fff;
-}
-.cg-pill-count {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--bright);
 }
-.cg-pill-bd {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 500;
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.cg-pill-x {
+.sel-mark { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; filter: var(--fx-base); }
+.sel-mark--text { display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; font-size: 8px; color: #fff; }
+.sel-n { font-family: 'Barlow Condensed', sans-serif; font-weight: 500; font-size: 14px; }
+.sel-bd { font-family: 'Barlow Condensed', sans-serif; font-weight: 500; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.sel-x {
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
-  padding: 0 3px;
-  border-radius: 3px;
+  padding: 2px 5px;
+  border-radius: 999px;
 }
-.cg-pill-x:hover {
-  color: var(--bright);
-  background: rgba(255,255,255,0.08);
-}
-.cg-picker-input {
-  flex: 1;
-  min-width: 140px;
-  background: none;
-  border: none;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  outline: none;
-  padding: 4px 2px;
-}
-.cg-picker-input::placeholder {
-  color: var(--muted);
-}
-.cg-picker-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
+.sel-x:hover { color: var(--bright); background: rgba(255,255,255,0.08); }
+
+/* the finder: a filter box over the list (Radix dropdown; vaul sheet on phones) */
+.menu {
+  z-index: 50;
   background: #403a3c;
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.55);
-  max-height: 320px;
-  overflow-y: auto;
-  z-index: 50;
-  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
 }
-.cg-picker-option {
+.tp-menu { width: 300px; padding: 0; max-height: min(60vh, var(--radix-dropdown-menu-content-available-height, 60vh)); overflow: hidden; }
+.tp-top { padding: 8px 8px 6px; flex: none; }
+.tp-q {
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 6px;
+  padding: 7px 10px;
+  outline: none;
+}
+.tp-q:focus { border-color: var(--bright); }
+.tp-q::placeholder { color: var(--muted); }
+.tp-list { overflow-y: auto; padding: 0 4px 4px; display: flex; flex-direction: column; }
+.mi {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  min-height: 36px;
   padding: 6px 10px;
-  cursor: pointer;
-  font-size: 13px;
+  background: transparent;
+  border: none;
   border-radius: 5px;
-}
-.cg-picker-option--active {
-  background: rgba(255,255,255,0.07);
-}
-.cg-picker-opt-logo {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-  flex-shrink: 0;
-  filter: var(--fx-base);
-}
-.cg-picker-opt-logo--text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff;
-}
-.cg-picker-opt-name {
-  flex: 1;
   color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
 }
-.cg-picker-opt-count {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 500;
-  font-size: 11px;
-  color: var(--muted);
+.mi:hover, .mi[data-highlighted] { background: rgba(255,255,255,0.07); }
+.mi.on { color: var(--bright); }
+.tp-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; filter: var(--fx-base); }
+.tp-ini { width: 22px; text-align: center; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+.tp-name { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-rec { font-family: 'Barlow Condensed', sans-serif; font-weight: 500; font-size: 12px; color: var(--muted); }
+.tp-none { color: var(--muted); font-style: italic; font-size: 13px; padding: 10px 12px; margin: 0; }
+.sheet-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 60; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; height: 62vh;
+  background: #403a3c; border-top: 1px solid rgba(255,255,255,0.18); border-radius: 12px 12px 0 0;
+  display: flex; flex-direction: column; outline: none;
 }
+.sheet::before { content: ''; width: 36px; height: 4px; border-radius: 2px; background: var(--muted); margin: 8px auto 4px; flex: none; }
+.sheet-title { font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); text-align: center; margin: 0 0 4px; }
+.sheet-body { overflow-y: auto; padding: 0 0 24px; display: flex; flex-direction: column; }
+.sheet-body .mi { padding: 10px 18px; font-size: 14px; }
+.sheet .tp-top { padding: 4px 14px 8px; }
 
 /* Share row */
 .cg-share {

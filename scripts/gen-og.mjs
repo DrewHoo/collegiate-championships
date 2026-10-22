@@ -1,140 +1,117 @@
-// Generate the 1200x630 OG preview image.
-// Renders an SVG frame, then composites the real one-color logo stamps
-// (public/logos/mono/) into a mini-board with one school lit in its brand
-// color — mirroring the site's monochrome-board / color-is-the-highlight
-// identity. Run with: node scripts/gen-og.mjs
+// The social preview images, drawn from the real grid in the site's own
+// visual language: the cinder palette, Georgia Bold title, Oswald labels,
+// Barlow words, the newest years of the board as one-color stamps with the
+// leading school lit in the accent. Run: npm run gen:og (on a Mac: the title
+// is Georgia Bold, read from the system; the script throws without it so a
+// fallback never gets committed). Re-run after a redesign or a data refresh
+// worth committing.
+//   public/og-grid.png  1200x630  og:image of the root
+//   public/card.png     1200x750  the same at 8:5, the cover the index site's sports list shows
 //
-// Fonts: librsvg (sharp's SVG backend) can't load the site's web fonts, so
-// the title falls back to a condensed system sans. The look is close; the
-// copy and board are what matter for the share card.
+// Text is drawn as glyph outlines through opentype.js (pinned 1.3.4: 2.x
+// emits NaN path data), so nothing depends on fontconfig: sharp's librsvg
+// never finds web fonts and would fall back to a system sans. The OFL fonts
+// in scripts/fonts/ are @fontsource's static woff files. Every meaningful
+// glyph stays inside the centered 720px column (x 240–960): Reddit's compact
+// feed center-crops the 1.91:1 card to a near-square.
+import { readFileSync, existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createServer } from 'vite'
+import opentype from 'opentype.js'
+import sharp from 'sharp'
 
-import sharp from 'sharp';
-import { readFileSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const FONTS = resolve(ROOT, 'scripts', 'fonts')
+const OUT = resolve(ROOT, 'public')
+const GEORGIA_BOLD = process.env.GEORGIA_BOLD ?? '/System/Library/Fonts/Supplemental/Georgia Bold.ttf'
+if (!existsSync(GEORGIA_BOLD)) throw new Error(`title font missing: ${GEORGIA_BOLD} (run gen:og on a Mac, or point GEORGIA_BOLD at a Georgia Bold TTF)`)
+const font = (f) => opentype.parse(readFileSync(f).buffer.slice(0))
+const FONT = {
+  Title: font(GEORGIA_BOLD),
+  Oswald: font(resolve(FONTS, 'Oswald-Medium.woff')),
+  Barlow: font(resolve(FONTS, 'Barlow-Regular.woff')),
+  BarlowBold: font(resolve(FONTS, 'Barlow-SemiBold.woff')),
+}
+// the cinder palette (src/ChampionshipGrid.jsx :root)
+const BG = '#2e2a2c', BRIGHT = '#eae4e2', MUTED = '#a29699', ACCENT = '#e2977e', LINE = 'rgba(255,255,255,0.08)'
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = resolve(__dirname, '..');
-const outDir = resolve(root, 'public');
-mkdirSync(outDir, { recursive: true });
+const width = (str, name, size, spacing = 0) => FONT[name].getAdvanceWidth(str, size, { kerning: true, letterSpacing: spacing / size })
+/** one run of text as a filled path; spacing is letter-spacing in px */
+function text(str, { x, y, font: name, size, fill, anchor = 'start', spacing = 0 }) {
+  const opts = { kerning: true, letterSpacing: spacing / size }
+  const w = width(str, name, size, spacing)
+  const x0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x
+  return `<path d="${FONT[name].getPath(str, x0, y, size, opts).toPathData(2)}" fill="${fill}"/>`
+}
+const fit = (str, name, size, maxW) => { while (size > 10 && width(str, name, size) > maxW) size -= 1; return size }
+const int = (n) => n.toLocaleString('en-US')
 
-const W = 1200;
-const H = 630;
+// the site's own model, through vite so the JSON imports and BASE_URL resolve
+const vite = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'warn' })
+const C = await vite.ssrLoadModule('/src/lib/champs.js')
+await vite.close()
 
-// Cinder-track theme (matches src/ChampionshipGrid.jsx :root).
-const BG = '#2e2a2c';
-const SURFACE = '#363134';
-const BORDER = 'rgba(255,255,255,0.08)';
-const BRIGHT = '#eae4e2';
-const MUTED = '#a29699';
-const ACCENT = '#e2977e';
-
-// The lit school and its brand color, from SCHOOLS. Wisconsin's bright
-// red reads on the dark card (Stanford's #8c1515 cardinal is too dark),
-// and the block-W stamp is recognizable at this size.
-const HERO = 'Wisconsin';
-const HERO_RGB = { r: 0xc5, g: 0x05, b: 0x0c };
-// A warm light grey for the recessive stamps — the muted "board".
-const STAMP_GREY = { r: 0xb2, g: 0xaa, b: 0xad };
-
-const TITLE_FONT = "Oswald, 'Barlow Condensed', 'Arial Narrow', Helvetica, Arial, sans-serif";
-const BODY_FONT = "Barlow, Helvetica, Arial, sans-serif";
-// The title face every sports site shares: Georgia Bold, as on Hostile Territory's poster.
-const SERIF_TITLE = "Georgia, 'Times New Roman', serif";
-
-// --- Mini-board geometry -----------------------------------------------------
-const CARD = { x: 596, y: 70, w: 544, h: 490 };
-const COLS = 14;
-const ROWS = 13;
-const PAD = 14;
-const cellW = (CARD.w - PAD * 2) / COLS;
-const cellH = (CARD.h - PAD * 2) / ROWS;
-const stampSize = Math.round(Math.min(cellW, cellH) * 0.82);
-
-// Deterministic PRNG so the card is stable across builds.
-let seed = 1972;
-const rand = () => {
-  seed = (seed * 9301 + 49297) % 233280;
-  return seed / 233280;
-};
-
-const slugs = JSON.parse(readFileSync(resolve(root, 'src', 'monoLogos.json'), 'utf8'))
-  .filter((s) => s !== HERO.replace(/\W+/g, ''));
-const heroSlug = HERO.replace(/\W+/g, '');
-
-// Assign each filled cell a school; ~1 in 7 cells is the hero (lit), the
-// rest are muted greyscale stamps, ~16% left empty.
-const layout = [];
-for (let r = 0; r < ROWS; r++) {
-  for (let c = 0; c < COLS; c++) {
-    if (rand() < 0.16) continue; // empty cell
-    const hero = rand() < 0.14;
-    layout.push({
-      r,
-      c,
-      slug: hero ? heroSlug : slugs[Math.floor(rand() * slugs.length)],
-      hero,
-    });
+/** a mono stamp (white with alpha) recolored to a solid, sized, as a data URI */
+const stampCache = new Map()
+async function stamp(school, size, rgb) {
+  const key = `${school}|${size}|${rgb.join()}`
+  if (stampCache.has(key)) return stampCache.get(key)
+  const file = resolve(OUT, 'logos', 'mono', `${C.slugOf(school)}.png`)
+  let uri = null
+  if (existsSync(file)) {
+    const { data, info } = await sharp(file).resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    for (let i = 0; i < data.length; i += 4) { data[i] = rgb[0]; data[i + 1] = rgb[1]; data[i + 2] = rgb[2] }
+    const png = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer()
+    uri = `data:image/png;base64,${png.toString('base64')}`
   }
+  stampCache.set(key, uri)
+  return uri
 }
 
-const frame = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect width="${W}" height="${H}" fill="${BG}"/>
-  <text x="64" y="140" font-family="${TITLE_FONT}" font-size="27" fill="${MUTED}" font-weight="500" letter-spacing="3">NCAA DIVISION I</text>
-  <text x="62" y="212" font-family="${SERIF_TITLE}" font-size="62" fill="${BRIGHT}" font-weight="700">Every Champion</text>
-  <text x="62" y="278" font-family="${SERIF_TITLE}" font-size="62" fill="${BRIGHT}" font-weight="700">Since 1972</text>
-  <text x="64" y="336" font-family="${TITLE_FONT}" font-size="27" fill="${ACCENT}" font-weight="500" letter-spacing="1">33 SPORTS · ONE GRID</text>
-  <text x="64" y="392" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">Every NCAA D-I national champion, laid</text>
-  <text x="64" y="419" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">out as a board of team logos. Pick a</text>
-  <text x="64" y="446" font-family="${BODY_FONT}" font-size="20" fill="${MUTED}">school to trace every title it has won.</text>
-  <rect x="${CARD.x}" y="${CARD.y}" width="${CARD.w}" height="${CARD.h}" rx="10" fill="${SURFACE}" stroke="${BORDER}" stroke-width="1"/>
-  <text x="64" y="586" font-family="${BODY_FONT}" font-size="18" fill="${MUTED}" font-weight="500">drewhoover.com/collegiate-championships</text>
-  <rect x="64" y="602" width="80" height="3" fill="${ACCENT}"/>
-</svg>`;
-
-async function main() {
-  const base = sharp(Buffer.from(frame)).png();
-
-  // Recolor a white-alpha stamp to a solid color, keeping its shape (the
-  // alpha channel). sharp.tint() preserves luminance, so it can't darken a
-  // white stamp — we set RGB directly and leave alpha untouched.
-  const recolor = async (slug, color) => {
-    const { data, info } = await sharp(resolve(outDir, 'logos', 'mono', `${slug}.png`))
-      .resize(stampSize, stampSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .ensureAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = color.r;
-      data[i + 1] = color.g;
-      data[i + 2] = color.b;
+async function render(W, H) {
+  const lead = C.leaderboard[0]
+  const cols = C.sortedSports.length
+  const cell = 20
+  const yearW = 40
+  const boardW = yearW + cols * cell // 700 for 33 sports
+  const x0 = (W - boardW) / 2
+  const headY = 188
+  const rowsN = Math.floor((H - headY - 66) / cell)
+  // the newest years with a full row of champions (the running year is partial, 2020 was canceled)
+  const years = C.descendingYears.filter((y) => C.sortedSports.filter((s) => C.champsOf(s.key, y).length).length >= cols * 0.8).slice(0, rowsN)
+  const sub = `${cols} sports in one grid. ${lead.school} leads with ${lead.total} titles; ${int(C.leaderboard.length)} schools have won at least one.`
+  const parts = [
+    `<rect width="${W}" height="${H}" fill="${BG}"/>`,
+    text('NCAA DIVISION I CHAMPIONSHIPS', { x: W / 2, y: 58, font: 'Oswald', size: 17, fill: ACCENT, anchor: 'middle', spacing: 4 }),
+    text(`Every champion since ${C.FIRST}`, { x: W / 2, y: 114, font: 'Title', size: 46, fill: BRIGHT, anchor: 'middle' }),
+    text(sub, { x: W / 2, y: 150, font: 'Barlow', size: fit(sub, 'Barlow', 21, 720), fill: MUTED, anchor: 'middle' }),
+  ]
+  const grey = [0xb2, 0xaa, 0xad]
+  const lit = [0xe2, 0x97, 0x7e]
+  for (let r = 0; r < years.length; r++) {
+    const y = headY + r * cell
+    const yr = years[r]
+    parts.push(text(String(yr), { x: x0 + yearW - 8, y: y + cell - 5, font: 'Oswald', size: 11, fill: yr % 10 === 0 ? BRIGHT : MUTED, anchor: 'end' }))
+    parts.push(`<line x1="${x0}" y1="${y + cell}" x2="${x0 + boardW}" y2="${y + cell}" stroke="${LINE}" stroke-width="1"/>`)
+    for (let c = 0; c < cols; c++) {
+      const champs = C.champsOf(C.sortedSports[c].key, yr)
+      if (!champs.length) continue
+      const school = champs[0]
+      const hero = school === lead.school
+      const uri = await stamp(school, 15, hero ? lit : grey)
+      if (!uri) continue
+      parts.push(`<image href="${uri}" x="${x0 + yearW + c * cell + 2.5}" y="${y + 2.5}" width="15" height="15"${hero ? '' : ' opacity="0.45"'}/>`)
     }
-    return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
-      .png()
-      .toBuffer();
-  };
-
-  const composites = [];
-  const cache = new Map();
-  for (const { r, c, slug, hero } of layout) {
-    const key = `${slug}:${hero ? 'hero' : 'grey'}`;
-    let buf = cache.get(key);
-    if (!buf) {
-      buf = await recolor(slug, hero ? HERO_RGB : STAMP_GREY);
-      cache.set(key, buf);
-    }
-    const left = Math.round(CARD.x + PAD + c * cellW + (cellW - stampSize) / 2);
-    const top = Math.round(CARD.y + PAD + r * cellH + (cellH - stampSize) / 2);
-    composites.push({ input: buf, left, top });
   }
-
-  const outPath = resolve(outDir, 'og-grid.png');
-  await base
-    .composite(composites)
-    .png({ compressionLevel: 9 })
-    .toFile(outPath);
-  console.log(`wrote ${outPath} (${composites.length} stamps, hero: ${HERO})`);
+  const titles = C.leaderboard.reduce((n, r) => n + r.total, 0)
+  parts.push(text(`${C.FIRST}–${C.LAST} · ${int(titles)} TITLES · ${int(C.leaderboard.length)} SCHOOLS · DREWHOOVER.COM`, { x: W / 2, y: H - 28, font: 'Oswald', size: 14, fill: MUTED, anchor: 'middle', spacing: 2 }))
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join('\n')}</svg>`
 }
 
-await main();
+// density 72 renders the SVG at its own size (96 would scale it by 4/3)
+const png = (svg) => sharp(Buffer.from(svg), { density: 72 }).png({ compressionLevel: 9, palette: true, colors: 192 })
+for (const [file, W, H] of [['og-grid.png', 1200, 630], ['card.png', 1200, 750]]) {
+  const info = await png(await render(W, H)).toFile(resolve(OUT, file))
+  console.log(`${file}: ${info.width}x${info.height}, ${(info.size / 1024).toFixed(0)}KB`)
+}
