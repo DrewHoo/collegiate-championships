@@ -35,7 +35,7 @@ One grid: a column per sport (${sports} of them, men's and women's), a row per y
 
 ## The other sports sites
 
-${siblings.map((s) => `- [${s.name}](${s.url}) — ${s.words}`).join('\n')}
+${siblings.map((s) => `- [${s.name}](${s.url})${s.links ? ':' : ' —'} ${s.words}${s.links ? ' ' + s.links.map((l) => `[${l.name}](${l.url})`).join(' | ') : ''}`).join('\n')}
 
 ## Citing
 
